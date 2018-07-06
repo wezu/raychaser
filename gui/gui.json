@@ -1,0 +1,178 @@
+{"frame":[
+         {"name":"save_frame",
+         "size":[448, 192],
+         "pos":[0,32],
+         "parent":"top_left",
+         "header":64,
+         "scroll":0,
+         "text":[
+                {"txt":"Save Scene", "pos":[0,8]},
+                {"txt":"File path:", "pos":[0,70], "big_font":0}
+                ],
+         "input":[{"txt":"scenes/default_1.json", "width":416, "pos":[16,96], "name":"save_path_input"}],
+         "button":  [
+                    {"txt":"Cancel","cmd":"app.gui.show_hide('', 'save_frame')", "width":128, "pos":[64,150]},
+                    {"txt":"Save","cmd":"app.save_scene()", "width":128, "pos":[256,150]}
+                    ]
+        },
+        {"name":"prop_frame",
+         "size":[256, "win_y"],
+         "pos":[-256,0],
+         "parent":"top_right",
+         "header":0,
+         "scroll":0,
+         "autoresize":1,
+         "button":  [
+                    {"txt":"Delete Object","cmd":"app.delete_object()", "width":192, "pos":[32,10]}
+                    ],
+
+         "text":[
+                    {"txt":"Name:\n\n\nPosition(X,Y,Z):\n\n\nRotation(H,P,R):\n\n\nScale(sX,sY,sZ):", "pos":[26,38], "big_font":0, "align":"left"}
+                ],
+         "input":[
+                    {"txt":"Foobar",           "width":224, "pos":[16,59], "name":"name_input", "cmd":"app.apply_input(txt, ['name'])"},
+                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,113], "name":"pos_input", "cmd":"app.apply_input(txt, ['x','y','z'])"},
+                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,167], "name":"hpr_input", "cmd":"app.apply_input(txt, ['h','p','r'])"},
+                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,221], "name":"scale_input", "cmd":"app.apply_input(txt, ['sx','sy','sz'])"}
+                ],
+         "icon":[
+                  {"cmd":"app.gui.show_hide('', 'prop_frame')", "pos":[216, 6], "img":"gui/icon_close.png"}
+                ]
+        },
+        {"name":"mesh_prop_frame",
+         "size":[256, "win_y-256"],
+         "pos":[0,256],
+         "parent":"prop_frame",
+         "header":0,
+         "scroll":0,
+         "autoresize":1,
+         "text":[
+                {"txt":"MATERIAL:\nSiO2", "pos":[0,8], "big_font":0, "name":"material_txt"},
+                {"txt":"SHADING:\nColor(r,g,b):\n\n\nTransparency:\n\n\nGloss:", "pos":[0,84], "big_font":0}
+                ],
+         "button":  [
+                    {"txt":"Set material...","cmd":"app.gui.show_hide('mat_list_frame')", "width":224, "pos":[12,54]}
+                    ],
+         "input":[
+                    {"txt":"1.0, 1.0, 1.0","width":224, "pos":[16,128], "name":"color_input", "cmd":"app.apply_input(txt, ['R', 'G', 'B'])"}
+                ],
+         "slider":  [
+                    {"value":0.0,"cmd":"app.set_alpha(value)", "width":224, "pos":[16,178], "name":"alpha_slider"},
+                    {"value":0.0,"cmd":"app.set_gloss(value)", "width":224, "pos":[16,232], "name":"gloss_slider"}
+                ]
+        },
+        {"name":"mat_list_frame",
+         "size":[256, "win_y"],
+         "pos":[-256,0],
+         "parent":"prop_frame",
+         "header":0,
+         "scroll":256,
+         "autoresize":1,
+         "text":[
+                {"txt":"Materials", "pos":[0,0]}
+                ],
+         "icon":[
+                  {"cmd":"app.gui.show_hide('', 'mat_list_frame')", "pos":[8, 8], "img":"gui/icon_close.png"}
+                ],
+         "button":  [
+                        {"txt": "Ktp X-axis", "cmd": "app.set_material('Ktp x')", "width": 224, "pos": [3, 34], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Ktp Y-axis", "cmd": "app.set_material('Ktp y')", "width": 224, "pos": [3, 68], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Ktp Z-axis", "cmd": "app.set_material('Ktp z')", "width": 224, "pos": [3, 102], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Ln E-axis", "cmd": "app.set_material('Ln e')", "width": 224, "pos": [3, 136], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Ln O-axis", "cmd": "app.set_material('Ln o')", "width": 224, "pos": [3, 170], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Tfln E-axis", "cmd": "app.set_material('Tfln e')", "width": 224, "pos": [3, 204], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Tfln O-axis", "cmd": "app.set_material('Tfln o')", "width": 224, "pos": [3, 238], "parent": "mat_list_frame_canvas"},
+                        {"txt": "LnMg E-axis", "cmd": "app.set_material('LnMg e')", "width": 224, "pos": [3, 272], "parent": "mat_list_frame_canvas"},
+                        {"txt": "LnMg O-axis", "cmd": "app.set_material('LnMg o')", "width": 224, "pos": [3,306], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Bbo E-axis", "cmd": "app.set_material('Bbo e')", "width": 224, "pos": [3, 340], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Bbo O-axis", "cmd": "app.set_material('Bbo o')", "width": 224, "pos": [3, 374], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Bibo X-axis", "cmd": "app.set_material('Bibo x')", "width": 224, "pos": [3, 408], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Bibo Y-axis", "cmd": "app.set_material('Biboy')", "width": 224, "pos": [3, 442], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Bibo Z-axis", "cmd": "app.set_material('Bibo z')", "width": 224, "pos": [3, 476], "parent": "mat_list_frame_canvas"},
+                        {"txt": "SiO2", "cmd": "app.set_material('SiO2')", "width": 224, "pos": [3, 510], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Su8", "cmd": "app.set_material('Su8')", "width": 224, "pos": [3, 544], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Al2O3 E-axis", "cmd": "app.set_material('Al2O3 e')", "width": 224, "pos": [3, 578], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Al2O3 O-axis", "cmd": "app.set_material('Al2O3 o')", "width": 224, "pos": [3, 612], "parent": "mat_list_frame_canvas"},
+                        {"txt": "TiO2 E-axis", "cmd": "app.set_material('TiO2 e')", "width": 224, "pos": [3, 646], "parent": "mat_list_frame_canvas"},
+                        {"txt": "TiO2 O-axis", "cmd": "app.set_material('TiO2 o')", "width": 224, "pos": [3, 680], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Chalcogenide As2S3", "cmd": "app.set_material('Chalcogenide As2S3')", "width": 238, "pos": [3, 714], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Chalcogenide As2Se3", "cmd": "app.set_material('Chalcogenide As2Se3')", "width": 238, "pos": [3, 748], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Chalcogenide GeSe4", "cmd": "app.set_material('Chalcogenide GeSe4')", "width": 238, "pos": [3, 782 ], "parent": "mat_list_frame_canvas"},
+                        {"txt": "Chal. Ge10As10Se80", "cmd": "app.set_material('Chalcogen. Ge10As10Se80')", "width": 238, "pos": [3, 816], "parent": "mat_list_frame_canvas"}
+                    ]
+        },
+        {"name":"ray_prop_frame",
+         "size":[256, "win_y-256"],
+         "pos":[0, 256],
+         "parent":"prop_frame",
+         "header":0,
+         "scroll":0,
+         "autoresize":1,
+         "text":[
+                {"txt":"Wavelength(nm):", "pos":[0,8], "big_font":0}
+                ],
+         "input":[
+                    {"txt":"650","width":224, "pos":[16,34], "name":"wave_input", "cmd":"app.apply_input(txt, ['wave'])"}
+                ]
+        },
+        {"name":"load_frame",
+         "size":[448, "win_y-64"],
+         "pos":[0,32],
+         "parent":"top_left",
+         "header":64,
+         "scroll":1024,
+         "autoresize":1,
+         "text":[
+                {"txt":"Load Scene", "pos":[0,8]}
+                ],
+         "button":  [
+                    {"txt":"Cancel","cmd":"app.gui.show_hide('', 'load_frame')", "width":128, "pos":[160,70]}
+                    ]
+        },
+        {"name":"list_frame",
+         "size":[448, "win_y-64"],
+         "pos":[0,32],
+         "parent":"top_left",
+         "header":64,
+         "scroll":1024,
+         "autoresize":1,
+         "text":[
+                {"txt":"Add or Select Object", "pos":[0,8]}
+                ],
+         "button":[
+                    {"txt":"Name","cmd":"app.gui.sort_buttons('list_frame_canvas', 'name')", "width":256, "pos":[16,80], "style":"_tick"},
+                    {"txt":"Type","cmd":"app.gui.sort_buttons('list_frame_canvas', 'type')", "width":64, "pos":[272,80], "style":"_tick"},
+                    {"txt":"ID","cmd":"app.gui.sort_buttons('list_frame_canvas', 'id')", "width":64, "pos":[336,80], "style":"_tick"},
+                    {"txt":" + Add new ray...", "cmd":"app.make_ray()", "width":384, "pos":[16,0], "sort_dict":{"name":" add_ray", "type":"cmd", "id":-2}, "parent":"list_frame_canvas", "mono_font":1, "align":"left"},
+                    {"txt":" + Add new mesh...", "cmd":"app.do_nill()", "width":384, "pos":[16,34], "sort_dict":{"name":" add_mesh", "type":"cmd", "id":-1}, "parent":"list_frame_canvas", "mono_font":1, "align":"left"}
+                  ],
+         "icon":[
+                  {"cmd":"app.gui.show_hide('', 'list_frame')", "pos":[406, 8], "img":"gui/icon_close.png"}
+                ]
+        }
+         ],
+"button":{
+        "button_save":{"txt":"Save", "cmd":"app.gui.show_hide('save_frame', ['list_frame','load_frame'])", "width":96, "pos":[0,0], "parent":"top_left"},
+        "button_load":{"txt":"Load", "cmd":"app.gui.show_hide('load_frame', ['list_frame','save_frame'])", "width":96, "pos":[96,0], "parent":"top_left"},
+        "button_list":{"txt":"Add/Select", "cmd":"app.gui.toggle('list_frame')", "width":160, "pos":[192,0], "parent":"top_left"},
+        "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[352,0], "parent":"top_left"},
+        "button_trace":{"txt":"Trace Rays!", "cmd":"app.do_raytrace()", "width":192, "pos":[448,0], "parent":"top_left", "txt_fg":[1.0, 1.0, 1.0, 1.0]},
+
+        "button_move":{"txt":"Move", "cmd":"app.set_move_mode()", "width":96, "pos":[0,-32], "parent":"bottom_left"},
+        "button_rotate":{"txt":"Rotate", "cmd":"app.set_rotate_mode()", "width":96, "pos":[96,-32], "parent":"bottom_left"},
+        "button_scale":{"txt":"Scale", "cmd":"app.set_scale_mode()", "width":96, "pos":[192,-32], "parent":"bottom_left"},
+        "button_x":{"txt":"X", "cmd":"app.toggle_axis('x')", "width":64, "pos":[288,-32], "parent":"bottom_left"},
+        "button_y":{"txt":"Y", "cmd":"app.toggle_axis('y')", "width":64, "pos":[348,-32], "parent":"bottom_left"},
+        "button_z":{"txt":"Z", "cmd":"app.toggle_axis('z')", "width":64, "pos":[408,-32], "parent":"bottom_left"},
+        "button_local":{"txt":"Global", "cmd":"app.set_coords_local()", "width":96, "pos":[468,-32], "parent":"bottom_left"}
+
+        },
+"icon": {},
+"slider":{},
+"input":{},
+"bar":  {},
+"text": {
+        "on_screen_txt":{"color":[1,1,1,1],"align":"left", "big_font":0, "parent":"bottom_left", "pos":[0,-60], "txt":"String is None"}
+        },
+"img": {}
+}
