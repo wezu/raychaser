@@ -1,4 +1,4 @@
-This is a tool for visualizing light ray refraction in 3D.
+## This is a tool for visualizing light ray refraction in 3D.
 ![screenshot](https://github.com/wezu/raychaser/blob/master/screen.png)
 
 You will need Python(3.x), Panda3D, opticalmaterialspy, numpy and scipy to run this program. You can install all of these using pip:
@@ -10,19 +10,19 @@ pip install panda3d
 This is a Work in Progress, more docs will follow..
 
 Controls:
-W,A,S,D - pan camera
-Q - move camera up
-Z - move camera down
-8 or UP_ARROW - view from top
-2 or DOWN_ARROW - view from bottom
-4 or LEFT_ARROW - view from left
-6 or RIGHT_ARROW - view from right
-7 or HOME - view from front
-1 or END - view from back
-LEFT MOUSE BUTTON - select and/or move/rotate/scale object
-SHIT + LEFT MOUSE BUTTON - and move cursor to pan camera
-RIGHT MOUSE BUTTON - hold and move cursor to rotate camera
-ESC - un-select object
+* W,A,S,D - pan camera
+* Q - move camera up
+* Z - move camera down
+* 8 or UP_ARROW - view from top
+* 2 or DOWN_ARROW - view from bottom
+* 4 or LEFT_ARROW - view from left
+* 6 or RIGHT_ARROW - view from right
+* 7 or HOME - view from front
+* 1 or END - view from back
+* LEFT MOUSE BUTTON - select and/or move/rotate/scale object
+* SHIT + LEFT MOUSE BUTTON - and move cursor to pan camera
+* RIGHT MOUSE BUTTON - hold and move cursor to rotate camera
+* ESC - un-select object
 
 
 
