@@ -170,13 +170,10 @@ class UI(DirectObject):
                     'minus_icon':self._make_tile(uv_offset=(0.125,0.25), rotation=0, frame_size=(-8, 8, -8, 8), tex_scale=(0.0625, 0.0625)),
                     'plus_icon':self._make_tile(uv_offset=(0.1875,0.25), rotation=0, frame_size=(-8, 8, -8, 8), tex_scale=(0.0625, 0.0625)),
                     'mouse_icon': self._make_tile(uv_offset=(0.5,0.375), rotation=0, frame_size=(-16, 16, -16, 16), tex_scale=(0.125, 0.125)),
+                    'close_icon': self._make_tile(uv_offset=(0.375,0.375), rotation=0, frame_size=(-16, 16, -16, 16), tex_scale=(0.125, 0.125)),
                     'icon': self._make_tile(uv_offset=(0.375,0.375), rotation=0, frame_size=(-16, 16, -16, 16), tex_scale=(0.125, 0.125)),
                     'dot_full':self._make_tile(uv_offset=(0.0,0.25), rotation=0, frame_size=(-8, 8, -8, 8), tex_scale=(0.0625, 0.0625)),
                     'dot':self._make_tile(uv_offset=(0.0625,0.25), rotation=0, frame_size=(-8, 8, -8, 8), tex_scale=(0.0625, 0.0625)),
-                    'arrow_right':self._make_tile(uv_offset=(0.3125,0.25), rotation=0, frame_size=(-16, 16, -8, 8), tex_scale=(0.125, 0.0625)),
-                    'arrow_left':self._make_tile(uv_offset=(0.3125,0.25), rotation=180, frame_size=(-16, 16, -8, 8), tex_scale=(0.125, 0.0625)),
-                    'arrow_up':self._make_tile(uv_offset=(0.3125,0.25), rotation=-90, frame_size=(-16, 16, -8, 8), tex_scale=(0.125, 0.0625)),
-                    'arrow_down':self._make_tile(uv_offset=(0.3125,0.25), rotation=90, frame_size=(-16, 16, -8, 8), tex_scale=(0.125, 0.0625)),
                     'line_red':None,
                     'blank': self._make_tile(uv_offset=(0.5,0.5), rotation=0, tex_scale=(0.25, 0.25))
                     }
@@ -306,11 +303,17 @@ class UI(DirectObject):
                     if not 'parent' in bars:
                         bars['parent']=frame['name']
                     self.bar(**bars)
-        for name, inputs in data['input'].items():
-            self.elements[name]=self.input(**inputs)
-            self.elements[name].hide()
+            #make widget
+            if 'widget' in frame:
+                for widget in frame['widget']:
+                    if not 'parent' in widget:
+                        widget['parent']=frame['name']
+                    self.widget(**widget)
         for name, button in data['button'].items():
             self.elements[name]=self.button(**button)
+            self.elements[name].hide()
+        for name, inputs in data['input'].items():
+            self.elements[name]=self.input(**inputs)
             self.elements[name].hide()
         for name, icon in data['icon'].items():
             self.elements[name]=self.icon(**icon)

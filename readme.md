@@ -9,11 +9,22 @@ pip install panda3d
 
 This is a Work in Progress, more docs will follow..
 
-You can move(pan) the camera with WASD keys or hold down shift+left mouse button and move the mouse.
+Controls:
+W,A,S,D - pan camera
+Q - move camera up
+Z - move camera down
+8 or UP_ARROW - view from top
+2 or DOWN_ARROW - view from bottom
+4 or LEFT_ARROW - view from left
+6 or RIGHT_ARROW - view from right
+7 or HOME - view from front
+1 or END - view from back
+LEFT MOUSE BUTTON - select and/or move/rotate/scale object
+SHIT + LEFT MOUSE BUTTON - and move cursor to pan camera
+RIGHT MOUSE BUTTON - hold and move cursor to rotate camera
+ESC - un-select object
 
-You can rotate the camera by holding down the right mouse button and moving the mouse around.
 
-You can select object by clicking on them and un-select by clicking anywhere else, or hitting the Esc key.
 
 When an object is selected a properties panel will pop up on the right, you can edit any properties by typing in values in input fields, moving sliders or clicking buttons.
 

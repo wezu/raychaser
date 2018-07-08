@@ -1,4 +1,4 @@
-show-frame-rate-meter  0
+show-frame-rate-meter  1
 sync-video 1
 antialias_msaa 0
 win-size  1280 720
@@ -12,4 +12,10 @@ key-camera-left a
 key-camera-right d
 key-camera-forward w
 key-camera-back s
-key-help f1
+key-camera-view-top 8
+key-camera-view-bottom 2
+key-camera-view-left 4
+key-camera-view-right 6
+key-camera-view-front 7
+key-camera-view-back 1
+

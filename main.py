@@ -61,9 +61,11 @@ class App(DirectObject):
         self.base = ShowBase.ShowBase()
         self.base.disableMouse()
         self.base.set_background_color(0.1, 0.1, 0.1)
-        self.base.camLens.set_near_far(0.1, 200.0)
+        self.base.camLens.set_near_far(0.01, 500.0)
         render.set_shader_auto(True)
         render.set_antialias(AntialiasAttrib.MMultisample)
+        fr=NodePath(base.frameRateMeter)
+        fr.hide()
         with loading():
             #vars
             self.select_mask=BitMask32.bit(11)
@@ -88,7 +90,7 @@ class App(DirectObject):
             self.gui=UI()
             self.gui.load_from_file('gui/gui.json')
             self.gui.show_hide(['button_save', 'button_load', 'button_list',
-                                'button_grid',
+                                'button_grid','button_cam','input_grid',
                                 'button_move','button_rotate','button_scale'])
 
             self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
@@ -179,18 +181,63 @@ class App(DirectObject):
             base.win.set_close_request_event('exit-event')
             self.accept('exit-event', self._on_exit)
 
+            #camera again
+            self._setup_select_buff()
+            self.ortho_cam(True)
+
             # Task
             taskMgr.add(self._lock_mouse_task, 'mouse_lock_tsk')
 
-            self._setup_select_buff()
-
+        #move the frame rate meter
+        fr_pos=fr.get_pos(pixel2d)
+        fr.set_x(pixel2d, fr_pos.x-256)
+        fr.show()
         self.gui.fade_screen(0.5, base.get_background_color())
         self.load_object('smiley')
+
+    def ortho_cam(self, set_orto=None):
+        if set_orto is None:
+            set_orto=base.camLens.is_perspective()
+        if set_orto:
+           base.camLens=OrthographicLens()
+           #base.camLens.set_aspect_ratio(base.get_aspect_ratio())
+           film_size=Vec2(base.get_size())
+           film_size/=film_size[0]/4
+           base.camLens.set_film_size(film_size)
+           base.camLens.set_near_far(0.01, 500.0)
+           base.cam.node().set_lens(base.camLens)
+           self.select_cam.node().set_lens(base.camLens)
+           self.gui.fade_in('button_cam')
+        else:
+            base.camLens=PerspectiveLens()
+            base.camLens.set_fov(60)
+            base.camLens.set_aspect_ratio(base.getAspectRatio())
+            base.camLens.set_near_far(0.1, 500.0)
+            base.cam.node().set_lens(base.camLens)
+            self.select_cam.node().set_lens(base.camLens)
+            self.gui.fade_out('button_cam')
+
+    def set_object_type(self, object_type='refract'):
+        if self.selected_id is None:
+            return
+        node=self.objects[self.selected_id]
+        if node:
+            node.set_python_tag('type', object_type)
+            name=node.get_python_tag('name')
+            id=node.get_python_tag('id')
+            object_type=node.get_python_tag('type')
+            text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
+            text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=name, type=object_type, id=id))
+            self.gui.fade_out(['button_refract', 'button_reflect','button_diffuse'])
+            self.gui.fade_in('button_'+object_type)
+            self.do_raytrace()
 
     def set_material(self, material='SiO2'):
         if self.selected_id is None:
             return
         node=self.objects[self.selected_id]
+        if node is None:
+            return
         if material=='Ktp x':
             m=mat_spy.Ktp('x')
         elif material=='Ktp y':
@@ -256,7 +303,7 @@ class App(DirectObject):
             self.grid.hide()
             self.gui.fade_out('button_grid')
 
-    def make_grid(self):
+    def make_grid(self, scale=10.0):
         l=LineSegs()
         l.set_color(Vec4(0.1, 0.38, 0.23, 1.0))
         l.set_thickness(2.0)
@@ -272,6 +319,10 @@ class App(DirectObject):
         #self.grid.set_depth_write(False)
         #self.grid.set_bin('fixed', 9)
         self.grid.set_pos(-5,-5,0)
+        self.grid.flatten_strong()
+        self.grid.set_scale(0.1)
+        self.grid.flatten_strong()
+        self.grid.set_scale(scale)
 
     def clear_scene(self):
         for n, node in enumerate(self.objects):
@@ -330,7 +381,9 @@ class App(DirectObject):
     def _do_cmd_from_txt(self, txt, value):
         ''' execute commad based  on string,
         this function is to  help with text entry widgets'''
-        #print(txt)
+        if txt == 'grid':
+            self.grid.set_scale(value)
+            self.gui['input_grid'].set('{0:.2f}'.format(*self.grid.get_scale(render)))
         if self.selected_id is None:
             return
         node=self.objects[self.selected_id]
@@ -370,11 +423,18 @@ class App(DirectObject):
             node.set_python_tag('wave', value)
             line=node.get_python_tag('line')
             line.set_color(color, 1)
+        elif txt == 'name':
+            node.set_python_tag('name', value)
+            id=node.get_python_tag('id')
+            object_type=node.get_python_tag('type')
+            text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
+            text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=value, type=object_type, id=id))
         else:
             return
         self.update_ui_for_node(node)
         if node.get_python_tag('type')=='ray':
-            self.trace_ray(node)
+            points=self.trace_ray(node)
+            self.draw_line(node, points)
 
     def apply_input(self, txt, target=['x','y','z']):
         '''Convert text input into a command'''
@@ -384,7 +444,7 @@ class App(DirectObject):
             try:
                 values.append(math_eval(v))
             except:
-                return
+                values.append(v)
         #process the inputs
         for value, txt  in zip(values, target):
             self._do_cmd_from_txt(txt, value)
@@ -398,7 +458,10 @@ class App(DirectObject):
 
         if node.has_python_tag('type'):
             t=node.get_python_tag('type')
-            if t=='mesh':
+            if t=='ray':
+                self.gui.show_hide('ray_prop_frame', 'mesh_prop_frame')
+                self.gui['wave_input'].set(str(node.get_python_tag('wave')))
+            else:
                 self.gui.show_hide('mesh_prop_frame', 'ray_prop_frame')
                 mat_name=node.get_python_tag('material_name')
                 self.gui['material_txt'].set_text('MATERIAL:\n'+mat_name)
@@ -407,9 +470,11 @@ class App(DirectObject):
                 self.gui['alpha_slider']['value']=1.0-c[3]
                 gloss=node.get_shader_input('gloss').get_vector()[0]
                 self.gui['gloss_slider']['value']=gloss
-            elif t=='ray':
-                self.gui.show_hide('ray_prop_frame', 'mesh_prop_frame')
-                self.gui['wave_input'].set(str(node.get_python_tag('wave')))
+                self.gui.fade_out(['button_refract', 'button_reflect','button_diffuse'])
+                self.gui.fade_in('button_'+t)
+
+    def freeze_object(self):
+        pass
 
     def select_by_id(self, id):
         '''Select  an  object  based on  ID'''
@@ -544,7 +609,10 @@ class App(DirectObject):
                 node=self.objects[self.selected_id]
                 self.update_ui_for_node(node)
                 if node.get_python_tag('type')=='ray':
-                    self.trace_ray(node)
+                    points=self.trace_ray(node)
+                    self.draw_line(node, points)
+                else:
+                    self.do_raytrace()
                 self.axis.set_pos(node.get_pos(render))
                 if not self.global_coords:
                     self.axis.set_hpr(node.get_hpr(render))
@@ -694,11 +762,11 @@ class App(DirectObject):
                                             base.win.get_gsg(), base.win)
         self.depth_tex=Texture()
         self.depth_buff.add_render_texture(tex=self.depth_tex, mode=GraphicsOutput.RTMBindOrCopy, bitplane=GraphicsOutput.RTPDepth)
-        cam = base.make_camera(win=self.depth_buff,
-                              lens=base.cam.node().get_lens(),
-                              scene=render,
-                              mask=self.select_mask)
-        cam.reparent_to(base.camera)
+        self.select_cam = base.make_camera(win=self.depth_buff,
+                                          lens=base.cam.node().get_lens(),
+                                          scene=render,
+                                          mask=self.select_mask)
+        self.select_cam.reparent_to(base.camera)
 
         cm = CardMaker("card")
         cm.setFrameFullscreenQuad ()
@@ -779,42 +847,23 @@ class App(DirectObject):
             B = 1.0
         return Vec4(R,G,B, 1.0)
 
+    def set_ray_divergent(self, divergent=True):
+        if divergent:
+            self.gui.fade_out('button_parallel')
+            self.gui.fade_in('button_divergent')
+        else:
+            self.gui.fade_out('button_divergent')
+            self.gui.fade_in('button_parallel')
+
+
     def do_raytrace(self):
         for node in self.objects:
             if node:
                 if node.get_python_tag('type')=='ray':
-                    self.trace_ray(node)
+                    points=self.trace_ray(node)
+                    self.draw_line(node, points)
 
-    def trace_ray(self, node):
-        wavelength=node.get_python_tag('wave')
-        origin=node.get_pos(render)
-        target=node.get_quat().get_forward()*1000.0
-        hit=self._ray(origin, target)
-        points=[]
-        ior_0=1.0
-        if hit.has_hit:
-            ior_1=hit.node.get_python_tag('material').n(wavelength)
-            while hit.has_hit:
-                points.append(hit.pos)
-                origin=hit.pos
-                refracted=self.refract(target.normalized(), hit.normal, ior_0, ior_1)
-                target=refracted.vector*1000.0
-                hit=self._ray(origin, target)
-                if hit.has_hit:
-                    if refracted.is_internal: # material->material????
-                        ior_1=hit.node.get_python_tag('material').n(wavelength)
-                        ior_0=ior_1
-                    else:
-                        if ior_0 == 1.0: #material->air
-                            ior_0=hit.node.get_python_tag('material').n(wavelength)
-                            ior_1=1.0
-                        else:           #air->material
-                            ior_0=1.0
-                            ior_1=hit.node.get_python_tag('material').n(wavelength)
-            else:
-                points.append(hit.pos)
-        else:
-            points=[origin, target]
+    def draw_line(self, node, points):
         line=node.get_python_tag('line')
         color=line.get_color()
         line.remove_node()
@@ -833,6 +882,46 @@ class App(DirectObject):
         node.set_python_tag('line', line)
         line.wrt_reparent_to(node)
         line.show_through(self.camera_mask)
+
+    def trace_ray(self, node, max_ray_length=1000.0):
+        wavelength=node.get_python_tag('wave')
+        origin=node.get_pos(render)
+        target=node.get_quat().get_forward()*1000.0
+        hit=self._ray(origin, target)
+        points=[]
+        ior_0=1.0
+        if hit.has_hit:
+            ior_1=hit.node.get_python_tag('material').n(wavelength)
+            while hit.has_hit:
+                points.append(hit.pos)
+                origin=hit.pos
+                object_type=hit.node.get_python_tag('type')
+                if object_type=='reflect':
+                    reflected=self.reflect(target.normalized(), hit.normal)
+                    target=reflected*max_ray_length
+                    hit=self._ray(origin, target)
+                elif object_type=='refract':
+                    refracted=self.refract(target.normalized(), hit.normal, ior_0, ior_1)
+                    target=refracted.vector*max_ray_length
+                    hit=self._ray(origin, target)
+                    if hit.has_hit:
+                        if refracted.is_internal: # material->material????
+                            ior_1=hit.node.get_python_tag('material').n(wavelength)
+                            ior_0=ior_1
+                        else:
+                            if ior_0 == 1.0: #material->air
+                                ior_0=hit.node.get_python_tag('material').n(wavelength)
+                                ior_1=1.0
+                            else:           #air->material
+                                ior_0=1.0
+                                ior_1=hit.node.get_python_tag('material').n(wavelength)
+                else:
+                    break
+            else:
+                points.append(hit.pos)
+        else:
+            points=[origin, target]
+        return points
 
     def reflect(self, I, N):
         return I - N * 2.0 * I.dot(N)
@@ -903,6 +992,19 @@ class App(DirectObject):
                 self._get_triangles(child, points)
         return points
 
+    def set_wireframe(self):
+        if self.selected_id is not None:
+            node=self.objects[self.selected_id]
+            if node:
+                render_mode=node.get_render_mode()
+                if render_mode==RenderModeAttrib.M_wireframe:
+                    node.set_render_mode_filled()
+                    self.gui.fade_out('button_wireframe')
+                else:
+                    node.set_render_mode_wireframe()
+                    self.gui.fade_in('button_wireframe')
+
+
     def set_gloss(self, value):
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
@@ -965,10 +1067,11 @@ class App(DirectObject):
                         cmd='app.select_by_id('+str(id)+')')
         self.gui.sort_buttons('list_frame_canvas', 'id', False)
         self.select_by_id(id)
-        self.trace_ray(mesh)
+        points=self.trace_ray(mesh)
+        self.draw_line(mesh, points)
 
 
-    def load_object(self, model, select=False):
+    def load_object(self, model, select=False, object_type='refract'):
         '''Loads a model, creates collision solids
         also adds the loaded model to self.models and creates a button on the object list
         '''
@@ -978,7 +1081,7 @@ class App(DirectObject):
         self.objects.append(mesh)
         id=len(self.objects)-1
         mesh.set_python_tag('id', id)
-        mesh.set_python_tag('type', 'mesh')
+        mesh.set_python_tag('type', object_type)
         mesh.set_python_tag('material', mat_spy.SiO2())
         mesh.set_python_tag('material_name', 'SiO2')
         mesh.set_python_tag('name', model_name)
@@ -994,7 +1097,6 @@ class App(DirectObject):
             c_node.node().add_solid(CollisionPolygon(*reversed(points)))
         c_node.node().set_into_collide_mask(self.obj_mask)
         #button
-        object_type='mesh'
         self.gui.button(txt='{name:<34} {type:<10} {id}'.format(name=model_name, type=object_type, id=id),
                         sort_dict={'name':model_name, 'type':object_type, 'id':id},
                         name='button_object_'+str(id),
