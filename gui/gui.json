@@ -56,7 +56,8 @@
                     {"txt":"Refract","cmd":"app.set_object_type('refract')", "name":"button_refract", "width":192, "pos":[28,88]},
                     {"txt":"Reflect","cmd":"app.set_object_type('reflect')", "name":"button_reflect", "width":192, "pos":[28,122]},
                     {"txt":"Diffuse","cmd":"app.set_object_type('diffuse')", "name":"button_diffuse", "width":192, "pos":[28,156]},
-                    {"txt":"Wireframe","txt_fg":[0.35, 0.35, 0.35, 1.0],"cmd":"app.set_wireframe()", "width":192, "pos":[28,368], "name":"button_wireframe"}
+                    {"txt":"Wireframe","txt_fg":[0.55, 0.55, 0.55, 1.0],"cmd":"app.set_wireframe()", "width":192, "pos":[28,368], "name":"button_wireframe"}
+
                     ],
          "input":[
                     {"txt":"1.0, 1.0, 1.0","width":224, "pos":[16,230], "name":"color_input", "cmd":"app.apply_input(txt, ['R', 'G', 'B'])"}
@@ -124,7 +125,7 @@
                 ],
         "button":  [
                     {"txt":"Parallel","cmd":"app.set_ray_divergent(False)", "name":"button_parallel","width":192, "pos":[28,198]},
-                    {"txt":"Divergent","txt_fg":[0.35, 0.35, 0.35, 1.0], "cmd":"app.set_ray_divergent(True)","name":"button_divergent", "width":192, "pos":[28,232]}
+                    {"txt":"Divergent","txt_fg":[0.55, 0.55, 0.55, 1.0], "cmd":"app.set_ray_divergent(True)","name":"button_divergent", "width":192, "pos":[28,232]}
                     ]
         },
         {"name":"load_frame",
@@ -141,6 +142,29 @@
                     {"txt":"Cancel","cmd":"app.gui.show_hide('', 'load_frame')", "width":128, "pos":[160,70]}
                     ]
         },
+        {"name":"model_frame",
+         "size":[448, "win_y-64"],
+         "pos":[0,32],
+         "parent":"top_left",
+         "header":64,
+         "scroll":1024,
+         "autoresize":1,
+         "text":[
+                {"txt":"Smooth:", "big_font":0, "pos":[324,4], "align":"left"}
+                ],
+         "input":[
+                    {"txt":"40","width":96, "pos":[310,24], "name":"smooth_input"}
+                 ],
+          "button":  [
+                    {"txt":"Name","cmd":"app.gui.sort_buttons('model_frame_canvas', 'name')", "width":288, "pos":[16,80], "style":"_tick"},
+                    {"txt":"Type","cmd":"app.gui.sort_buttons('model_frame_canvas', 'type')", "width":96, "pos":[304,80], "style":"_tick"},
+                    {"txt":"Flip normal", "txt_fg":[0.55, 0.55, 0.55, 1.0],"cmd":"app.set_flip_normal()", "width":160, "pos":[8,24], "name":"button_normal"},
+                    {"txt":"Write bam", "txt_fg":[0.55, 0.55, 0.55, 1.0],"cmd":"app.set_write_bam()", "width":160, "pos":[160,24], "name":"button_bam"}
+                    ],
+         "widget":[
+                  {"cmd":"app.gui.show_hide('', 'model_frame')", "pos":[406, 8], "geom_name":"close_icon"}
+                ]
+        },
         {"name":"list_frame",
          "size":[448, "win_y-64"],
          "pos":[0,32],
@@ -156,7 +180,7 @@
                     {"txt":"Type","cmd":"app.gui.sort_buttons('list_frame_canvas', 'type')", "width":64, "pos":[272,80], "style":"_tick"},
                     {"txt":"ID","cmd":"app.gui.sort_buttons('list_frame_canvas', 'id')", "width":64, "pos":[336,80], "style":"_tick"},
                     {"txt":" + Add new ray...", "cmd":"app.make_ray()", "width":384, "pos":[16,0], "sort_dict":{"name":" add_ray", "type":"cmd", "id":-2}, "parent":"list_frame_canvas", "mono_font":1, "align":"left"},
-                    {"txt":" + Add new mesh...", "cmd":"app.do_nill()", "width":384, "pos":[16,34], "sort_dict":{"name":" add_mesh", "type":"cmd", "id":-1}, "parent":"list_frame_canvas", "mono_font":1, "align":"left"}
+                    {"txt":" + Add new mesh...", "cmd":"app.gui.show_hide('model_frame', 'list_frame')", "width":384, "pos":[16,34], "sort_dict":{"name":" add_mesh", "type":"cmd", "id":-1}, "parent":"list_frame_canvas", "mono_font":1, "align":"left"}
                   ],
          "widget":[
                   {"cmd":"app.gui.show_hide('', 'list_frame')", "pos":[406, 8], "geom_name":"close_icon"}
@@ -184,7 +208,7 @@
 "input":{"input_grid":{"txt":"10.0", "width":64, "pos":[84,0], "parent":"button_grid", "cmd":"app.apply_input(txt, ['grid'])"}},
 "bar":  {},
 "text": {
-        "on_screen_txt":{"color":[1,1,1,1],"align":"left", "big_font":0, "parent":"bottom_left", "pos":[0,-60], "txt":"String is None"}
+        "on_screen_txt":{"color":[1,1,1,1],"align":"left", "big_font":0, "parent":"bottom_left", "pos":[6,-54], "txt":"String is None", "sort":12}
         },
 "img": {}
 }

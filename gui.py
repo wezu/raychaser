@@ -386,7 +386,7 @@ class UI(DirectObject):
             button=self.elements[name]
             if button.has_python_tag('text'):
                 t=button.get_python_tag('text')
-                t.node().set_text_color((0.35, 0.35, 0.35, 1.0))
+                t.node().set_text_color((0.55, 0.55, 0.55, 1.0))
             else:
                 button.set_color(1,1,1, 0.25)
 
@@ -448,7 +448,7 @@ class UI(DirectObject):
             node.hide()
         return node
 
-    def text(self, txt, pos, parent, align='center',  color=(0.2, 0.75, 0.45, 1.0), big_font=True, mono_font=False, wordwrap=None, name=None):
+    def text(self, txt, pos, parent, align='center',  color=(0.2, 0.75, 0.45, 1.0), big_font=True, mono_font=False, wordwrap=None, name=None, sort=0):
         '''Creates a text widget'''
         if parent in self.elements:
             parent = self.elements[parent]
@@ -484,7 +484,7 @@ class UI(DirectObject):
         textNodePath.flatten_light()
         textNodePath.set_pos(_pos2d(*pos))
         textNodePath.set_transparency(TransparencyAttrib.M_alpha)
-        textNodePath.set_bin("fixed", 0)
+        textNodePath.set_bin("fixed", sort)
         if name is not None:
              self.elements[name]=t
              self.elements[name+'_node']=textNodePath

@@ -10,8 +10,8 @@ in vec2 uv;
 void main()
     {
 
-    float f=200.0;
-    float n = 0.1;
+    float f=500.0;
+    float n = 0.01;
     float z = (2.0 * n) / (f + n - texture( depth_tex, uv ).x * (f - n));
     float separation = thickness*0.001*(1.0-z);
 

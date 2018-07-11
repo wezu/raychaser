@@ -35,7 +35,7 @@ class CameraControler (DirectObject):
 
         self.bind_keys()
 
-    def set_view(self, view='front'):
+    def set_view(self, view='front', num=0):
         views={'front':(Vec3(90, 0, 0),Vec3(90, 0, 0)),
                'back': (Vec3(-90, 0, 0),Vec3(-90, 0, 0)),
                'left':(Vec3(0, 0, 0),Vec3(0, 0, 0)),
@@ -43,11 +43,18 @@ class CameraControler (DirectObject):
                'top':(Vec3(90, 0, 0),Vec3(90, 90, 0)),
                'bottom':(Vec3(90, 0, 0),Vec3(90, -90, 0))}
         if view in views:
-            if self.node.get_hpr(render)!=views[view][0] or self.gimbal.get_hpr(render)!=views[view][1]:
+            if self.node.get_hpr(render).almost_equal(views[view][0]) and self.gimbal.get_hpr(render).almost_equal(views[view][1]):
+                return
+            else:    
+                if num>3:
+                        self.node.set_hpr(render, views[view][0])
+                        self.gimbal.set_hpr(render, views[view][1])
+                        self.node.set_pos(render,(0,0,0))
+                        return
                 Sequence(Parallel(LerpHprInterval(self.gimbal, 0.1, views[view][1], other=render),
                                   LerpHprInterval(self.node, 0.1, views[view][0], other=render),
                                   LerpPosInterval(self.node, 0.1, Vec3(0,0,0), other=render)),
-                         Func(self.set_view, view)
+                         Func(self.set_view, view, 1+num)
                          ).start()
 
     def bind_keys(self, rotate='mouse3', zoom_in='wheel_up', zoom_out='wheel_down',

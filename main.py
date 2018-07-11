@@ -4,6 +4,7 @@
 
 import opticalmaterialspy as mat_spy
 from panda3d.core import *
+from panda3d.egg import *
 loadPrcFile('options.prc')
 #loadPrcFileData('', 'default-model-extension .bam')
 loadPrcFileData('','textures-power-2 None')
@@ -31,6 +32,8 @@ import time
 import shutil
 from math import sqrt
 from collections import namedtuple
+from collections import deque
+import threading
 #py 2 and 3 compatibility
 if sys.version_info >= (3, 0):
     import builtins
@@ -46,7 +49,7 @@ from gui import math_eval
 #set the window decoration before we start
 wp = WindowProperties.getDefault()
 wp.set_title("Raychaser  wezu.dev@gmail.com")
-wp.set_icon_filename('gui/wezu.ico')
+wp.set_icon_filename('gui/icon.ico')
 WindowProperties.setDefault(wp)
 
 
@@ -62,10 +65,12 @@ class App(DirectObject):
         self.base.disableMouse()
         self.base.set_background_color(0.1, 0.1, 0.1)
         self.base.camLens.set_near_far(0.01, 500.0)
-        render.set_shader_auto(True)
-        render.set_antialias(AntialiasAttrib.MMultisample)
-        fr=NodePath(base.frameRateMeter)
-        fr.hide()
+        #render.set_shader_auto(True)
+        #render.set_antialias(AntialiasAttrib.MMultisample)
+        try:
+            NodePath(base.frameRateMeter).hide()
+        except:
+            pass
         with loading():
             #vars
             self.select_mask=BitMask32.bit(11)
@@ -78,11 +83,14 @@ class App(DirectObject):
             self.mouse_lock=False
             self.mouse_lock_frame_skip=True
             self.selected_id=None
+            self.flip_model_normal=False
+            self.write_model_bam=False
 
             self.mode='select'
             self.global_coords=True
             self.active_axis=['x','y','z']
             self.objects=[]
+            self.scene=render.attach_new_node('scene')
             #cam mask
             base.cam.node().set_camera_mask(self.camera_mask)
 
@@ -148,30 +156,10 @@ class App(DirectObject):
             self.lit_shader=Shader.load(Shader.SLGLSL, 'shaders/litsphere_v.glsl', 'shaders/litsphere_f.glsl')
             render.set_shader_input('litex', loader.load_texture('data/lit_sphere3.png'))
             #find data to load
-            offset=-32
-            for fn in os.listdir('models'):
-                f=Filename(fn)
-                if f.get_extension() in ('bam', 'egg', '3d', '3ds', '3mf',
-                                         'ac', 'ac3d', 'acc', 'amj', 'ase',
-                                         'ask', 'b3d', 'blend', 'bvh', 'cms',
-                                         'cob', 'dae', 'dxf', 'enff', 'fbx',
-                                         'hmb', 'ifc', 'irr', 'lwo', 'lws',
-                                         'lxo', 'md2', 'md3', 'md5', 'mdc',
-                                         'mdl', 'xml', 'mot', 'ms3d', 'ndo',
-                                         'nff', 'obj', 'off', 'ogex', 'ply',
-                                         'pmx', 'prj', 'q3o', 'q3s', 'raw',
-                                         'scn', 'sib', 'smd', 'stp', 'stl',
-                                         'ter', 'uc', 'vta', 'x', 'x3d', 'xgl', 'zgl'):
-                    if not f.getBasenameWoExtension().endswith('_coll'):
-                        offset+=32
-                        app.gui.button(txt='{name:<40} {type}'.format(name=f.getBasenameWoExtension(), type='object'),
-                                       sort_dict={'name':fn, 'type':'object'},
-                                       mono_font=True,
-                                       align='left',
-                                       cmd="app.load_object('models/"+fn+"', select=True)",
-                                       width=384,
-                                       pos=(16,offset),
-                                       parent='model_frame_canvas')
+            self.find_models('refract')
+            self.find_models('reflect')
+            self.find_models('beamsplit')
+            self.find_models('absorb')
             #mouse keys
             self.accept('mouse1', self._on_click)
             self.accept('mouse1-up', self._unlock_mouse)
@@ -185,15 +173,98 @@ class App(DirectObject):
             self._setup_select_buff()
             self.ortho_cam(True)
 
+            self.in_que=deque()
+            self.out_que=deque()
+            self.deamon_stop_event= threading.Event()
+            self.deamon = threading.Thread(name='daemon', target=self.ray_deamon, args=(self.deamon_stop_event,))
+            self.deamon.setDaemon(True)
+            self.deamon.start()
+
+
             # Task
             taskMgr.add(self._lock_mouse_task, 'mouse_lock_tsk')
+            taskMgr.add(self._update, 'update_tsk')
 
-        #move the frame rate meter
+        self.splash=self.gui.img('gui/splash.png', 'center', (-512,-384))
+        self.splash.set_bin("fixed", 11)
+        base.buttonThrowers[0].node().setButtonDownEvent('buttonDown')
+        self.accept('buttonDown', self.remove_splash)
+        self.print_txt('                 [Press any key to continue]')
+        #self.gui.fade_screen(0.5, base.get_background_color())
+        #self.load_object('smiley')
+
+    def remove_splash(self, key_event=None):
+        self.splash.hide()
+        self.gui.fade_screen(0.5, base.get_background_color())
+        self.ignore('buttonDown')
+        self.print_txt('')
+        fr=NodePath(base.frameRateMeter)
         fr_pos=fr.get_pos(pixel2d)
         fr.set_x(pixel2d, fr_pos.x-256)
         fr.show()
-        self.gui.fade_screen(0.5, base.get_background_color())
-        self.load_object('smiley')
+
+
+    def set_flip_normal(self):
+        if self.flip_model_normal:
+            self.flip_model_normal=False
+            self.gui.fade_out('button_normal')
+        else:
+            self.flip_model_normal=True
+            self.gui.fade_in('button_normal')
+
+
+    def set_write_bam(self):
+        if self.write_model_bam:
+            self.write_model_bam=False
+            self.gui.fade_out('button_bam')
+        else:
+            self.write_model_bam=True
+            self.gui.fade_in('button_bam')
+
+    def _update(self, task):
+        dt = globalClock.getDt()
+        if self.out_que:
+            node_id, points = self.out_que.popleft()
+            if points:
+                self.draw_line(node_id, points)
+        return task.again
+
+    def ray_deamon(self, stop_event):
+        while not stop_event.is_set():
+            sleep_time=0.16666 #~1.0/60.0
+            if self.in_que:
+                node_id= self.in_que.popleft()
+                points=self.trace_ray(node_id)
+                self.out_que.append((node_id, points))
+                sleep_time=0
+            time.sleep(sleep_time)
+
+    def trace_ray_in_thread(self, node_id):
+        self.in_que.append(node_id)
+
+    def find_models(self, dir):
+        for fn in os.listdir('models/'+dir):
+                f=Filename(fn)
+                if f.get_extension() in ('bam', 'egg', '3d', '3ds', '3mf',
+                                         'ac', 'ac3d', 'acc', 'amj', 'ase',
+                                         'ask', 'b3d', 'blend', 'bvh', 'cms',
+                                         'cob', 'dae', 'dxf', 'enff', 'fbx',
+                                         'hmb', 'ifc', 'irr', 'lwo', 'lws',
+                                         'lxo', 'md2', 'md3', 'md5', 'mdc',
+                                         'mdl', 'xml', 'mot', 'ms3d', 'ndo',
+                                         'nff', 'obj', 'off', 'ogex', 'ply',
+                                         'pmx', 'prj', 'q3o', 'q3s', 'raw',
+                                         'scn', 'sib', 'smd', 'stp', 'stl',
+                                         'ter', 'uc', 'vta', 'x', 'x3d', 'xgl', 'zgl'):
+                    app.gui.button(txt='{name:<40} {type}'.format(name=f.getBasename(), type=dir),
+                                       sort_dict={'name':fn, 'type':dir},
+                                       mono_font=True,
+                                       align='left',
+                                       cmd="app.load_object('models/"+dir+'/'+fn+"', select=True, object_type='refract')",
+                                       width=384,
+                                       pos=(16,0),
+                                       parent='model_frame_canvas')
+        self.gui.sort_buttons('model_frame_canvas', 'type', False)
 
     def ortho_cam(self, set_orto=None):
         if set_orto is None:
@@ -433,8 +504,10 @@ class App(DirectObject):
             return
         self.update_ui_for_node(node)
         if node.get_python_tag('type')=='ray':
-            points=self.trace_ray(node)
-            self.draw_line(node, points)
+            node_id=node.get_python_tag('id')
+            #points=self.trace_ray(node_id)
+            #self.draw_line(node_id, points)
+            self.trace_ray_in_thread(node_id)
 
     def apply_input(self, txt, target=['x','y','z']):
         '''Convert text input into a command'''
@@ -478,11 +551,16 @@ class App(DirectObject):
 
     def select_by_id(self, id):
         '''Select  an  object  based on  ID'''
+        for node in self.objects:
+            if node:
+                node.hide(self.select_mask)
         self.set_select_mode()
         node=self.objects[id]
         node.show_through(self.select_mask)
         self.selected_id=id
         self.update_ui_for_node(node)
+
+
 
     def set_select_mode(self):
         self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
@@ -609,8 +687,10 @@ class App(DirectObject):
                 node=self.objects[self.selected_id]
                 self.update_ui_for_node(node)
                 if node.get_python_tag('type')=='ray':
-                    points=self.trace_ray(node)
-                    self.draw_line(node, points)
+                    node_id=node.get_python_tag('id')
+                    #points=self.trace_ray(node_id)
+                    #self.draw_line(node_id, points)
+                    self.trace_ray_in_thread(node_id)
                 else:
                     self.do_raytrace()
                 self.axis.set_pos(node.get_pos(render))
@@ -727,6 +807,12 @@ class App(DirectObject):
                 #print(hit)
                 if hit.get_parent().has_python_tag('id'):
                     self.selected_id=hit.get_parent().get_python_tag('id')
+                    for node in self.objects:
+                        if node:
+                            if node.get_python_tag('id')==self.selected_id:
+                                node.show_through(self.select_mask)
+                            else:
+                                node.hide(self.select_mask)
                     self.axis.set_pos(hit.get_parent().get_pos(render))
                     if self.global_coords:
                         self.axis.set_hpr(0,0,0)
@@ -781,6 +867,7 @@ class App(DirectObject):
 
     def _on_exit(self):
         '''Function called when  the window is closed  by  the user'''
+        self.deamon_stop_event.set()
         render.hide()
         self.overlay.hide()
         self.gui.hide_root()
@@ -857,13 +944,20 @@ class App(DirectObject):
 
 
     def do_raytrace(self):
+        self.in_que.clear()
+        self.out_que.clear()
         for node in self.objects:
             if node:
                 if node.get_python_tag('type')=='ray':
-                    points=self.trace_ray(node)
-                    self.draw_line(node, points)
+                    node_id=node.get_python_tag('id')
+                    self.trace_ray_in_thread(node_id)
+                    #points=self.trace_ray(node_id)
+                    #self.draw_line(node_id, points)
 
-    def draw_line(self, node, points):
+    def draw_line(self, node_id, points):
+        node=self.objects[node_id]
+        if node is None:
+            return
         line=node.get_python_tag('line')
         color=line.get_color()
         line.remove_node()
@@ -883,7 +977,10 @@ class App(DirectObject):
         line.wrt_reparent_to(node)
         line.show_through(self.camera_mask)
 
-    def trace_ray(self, node, max_ray_length=1000.0):
+    def trace_ray(self, node_id, max_ray_length=1000.0):
+        node=self.objects[node_id]
+        if node is None:
+            return None
         wavelength=node.get_python_tag('wave')
         origin=node.get_pos(render)
         target=node.get_quat().get_forward()*1000.0
@@ -895,12 +992,21 @@ class App(DirectObject):
             while hit.has_hit:
                 points.append(hit.pos)
                 origin=hit.pos
+                do_refract=False
+                do_reflect=False
                 object_type=hit.node.get_python_tag('type')
                 if object_type=='reflect':
+                    do_reflect=True
+                if object_type=='refract':
+                    do_refract=True
+                if object_type=='beamsplit':
+                    do_refract=True
+                    do_reflect=True
+                if do_reflect:
                     reflected=self.reflect(target.normalized(), hit.normal)
                     target=reflected*max_ray_length
                     hit=self._ray(origin, target)
-                elif object_type=='refract':
+                if do_refract:
                     refracted=self.refract(target.normalized(), hit.normal, ior_0, ior_1)
                     target=refracted.vector*max_ray_length
                     hit=self._ray(origin, target)
@@ -915,7 +1021,7 @@ class App(DirectObject):
                             else:           #air->material
                                 ior_0=1.0
                                 ior_1=hit.node.get_python_tag('material').n(wavelength)
-                else:
+                if not do_reflect and not do_refract:
                     break
             else:
                 points.append(hit.pos)
@@ -969,6 +1075,28 @@ class App(DirectObject):
         ray.remove_node()
         return Hit(False, target, Vec3(0,0,0), None)
 
+    def _make_smooth_mesh(self, triangles, threshold=20.0, flip_normal=True):
+        egg = EggData()
+        pool = EggVertexPool('vertex_pool')
+        egg.add_child(pool)
+        group = EggGroup('mesh')
+        egg.add_child(group)
+        for points in triangles:
+            epoly = EggPolygon()
+            group.add_child(epoly)
+            if flip_normal:
+                points.reverse()
+            for point in points:
+                eprim = epoly
+                ev = EggVertex()
+                ev.set_pos(Point3D(*point))
+                ev.set_normal(Vec3D(0,0,0))
+                pool.add_vertex(ev)
+                eprim.add_vertex(ev)
+        if threshold is not None:
+            egg.recompute_vertex_normals(threshold)
+        return NodePath(loadEggData( egg ))
+
     def _get_triangles(self, mesh, points=[]):
         for child in mesh.get_children():
             node=child.node()
@@ -1019,9 +1147,24 @@ class App(DirectObject):
                 c[3]=1.01-value
                 node.set_color(c)
 
+    def flip_normals(self):
+        if self.selected_id is not None:
+            node=self.objects[self.selected_id]
+            if node:
+                attr=node.get_attrib(CullFaceAttrib).get_effective_mode()
+                if attr == CullFaceAttrib.M_cull_clockwise:
+                    node.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_counter_clockwise))
+                    self.print_txt('Backface culling: counter clockwise.')
+                elif attr == CullFaceAttrib.M_cull_counter_clockwise:
+                    node.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_none ))
+                    self.print_txt('Backface culling: off')
+                else:
+                    node.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_clockwise))
+                    self.print_txt('Backface culling: clockwise.')
+
     def make_ray(self):
         mesh=loader.load_model('data/cylinder.egg')
-        mesh.reparent_to(render)
+        mesh.reparent_to(self.scene)
         self.objects.append(mesh)
         id=len(self.objects)-1
         model_name='Ray #'+str(id)
@@ -1067,17 +1210,33 @@ class App(DirectObject):
                         cmd='app.select_by_id('+str(id)+')')
         self.gui.sort_buttons('list_frame_canvas', 'id', False)
         self.select_by_id(id)
-        points=self.trace_ray(mesh)
-        self.draw_line(mesh, points)
+        self.trace_ray_in_thread(id)
+        #points=self.trace_ray(id)
+        #self.draw_line(id, points)
 
 
     def load_object(self, model, select=False, object_type='refract'):
         '''Loads a model, creates collision solids
         also adds the loaded model to self.models and creates a button on the object list
         '''
-        mesh=loader.load_model(model)
+        try:
+            mesh=loader.load_model(model)
+        except:
+            self.print_txt('Error loading model '+model)
+            return
         model_name=Filename(model).getBasenameWoExtension()
-        mesh.reparent_to(render)
+        triangles=self._get_triangles(mesh, [])
+        #make a new mesh and smooth it
+        if Filename(model).get_extension() not in ('bam', 'egg'):
+            threshold=self.gui['smooth_input'].get()
+            try:
+                threshold=math_eval(threshold)
+            except:
+                threshold=None
+            mesh=self._make_smooth_mesh(triangles, threshold, self.flip_model_normal)
+            if self.write_model_bam:
+                mesh.write_bam_file(model+'.bam')
+        mesh.reparent_to(self.scene)
         self.objects.append(mesh)
         id=len(self.objects)-1
         mesh.set_python_tag('id', id)
@@ -1091,11 +1250,13 @@ class App(DirectObject):
         mesh.set_shader_input('gloss', 0.0)
         #collision
         c_node=mesh.attach_new_node(CollisionNode('cnode'))
-        for points in self._get_triangles(mesh, []):
+        for points in triangles:
             #print(points)
             c_node.node().add_solid(CollisionPolygon(*points))
             c_node.node().add_solid(CollisionPolygon(*reversed(points)))
         c_node.node().set_into_collide_mask(self.obj_mask)
+
+        mesh.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_clockwise))
         #button
         self.gui.button(txt='{name:<34} {type:<10} {id}'.format(name=model_name, type=object_type, id=id),
                         sort_dict={'name':model_name, 'type':object_type, 'id':id},
@@ -1107,9 +1268,10 @@ class App(DirectObject):
                         align='left',
                         cmd='app.select_by_id('+str(id)+')')
         self.gui.sort_buttons('list_frame_canvas', 'id', False)
+        self.gui.show_hide('', 'model_frame')
         if select:
             self.select_by_id(id)
-        #return np
+        return mesh
 
 
 application=App()
