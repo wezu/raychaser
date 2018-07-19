@@ -1,0 +1,128 @@
+<CoordinateSystem> { Z-Up }
+
+<Group> Box001 {
+  <VertexPool> Box001.verts {
+    <Vertex> 0 {
+      -0.5 -0.5 0
+      <UV> { 1 0 }
+      <Normal> { 0 0 -1 }
+    }
+    <Vertex> 1 {
+      -0.5 0.5 0
+      <UV> { 1 1 }
+      <Normal> { 0 0 -1 }
+    }
+    <Vertex> 2 {
+      0.5 0.5 0
+      <UV> { 0 1 }
+      <Normal> { 0 0 -1 }
+    }
+    <Vertex> 3 {
+      0.5 -0.5 0
+      <UV> { 0 0 }
+      <Normal> { 0 0 -1 }
+    }
+    <Vertex> 4 {
+      -0.5 -0.5 0
+      <UV> { 0 0 }
+      <Normal> { 0 -1 0 }
+    }
+    <Vertex> 5 {
+      0.5 -0.5 0
+      <UV> { 1 0 }
+      <Normal> { 0 -1 0 }
+    }
+    <Vertex> 6 {
+      -0.5 -0.5 1
+      <UV> { 1 1 }
+      <Normal> { 0 -1 0 }
+    }
+    <Vertex> 7 {
+      0.5 -0.5 0
+      <UV> { 0 0 }
+      <Normal> { 0.707107 0 0.707107 }
+    }
+    <Vertex> 8 {
+      0.5 0.5 0
+      <UV> { 1 0 }
+      <Normal> { 0.707107 0 0.707107 }
+    }
+    <Vertex> 9 {
+      -0.5 0.5 1
+      <UV> { 1 1 }
+      <Normal> { 0.707107 0 0.707107 }
+    }
+    <Vertex> 10 {
+      -0.5 -0.5 1
+      <UV> { 0 1 }
+      <Normal> { 0.707107 0 0.707107 }
+    }
+    <Vertex> 11 {
+      0.5 0.5 0
+      <UV> { 0 0 }
+      <Normal> { 0 1 0 }
+    }
+    <Vertex> 12 {
+      -0.5 0.5 0
+      <UV> { 1 0 }
+      <Normal> { 0 1 0 }
+    }
+    <Vertex> 13 {
+      -0.5 0.5 1
+      <UV> { 1 1 }
+      <Normal> { 0 1 0 }
+    }
+    <Vertex> 14 {
+      -0.5 0.5 0
+      <UV> { 0 0 }
+      <Normal> { -1 0 0 }
+    }
+    <Vertex> 15 {
+      -0.5 -0.5 0
+      <UV> { 1 0 }
+      <Normal> { -1 0 0 }
+    }
+    <Vertex> 16 {
+      -0.5 -0.5 1
+      <UV> { 1 1 }
+      <Normal> { -1 0 0 }
+    }
+    <Vertex> 17 {
+      -0.5 0.5 1
+      <UV> { 0 1 }
+      <Normal> { -1 0 0 }
+    }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 0 1 2 <Ref> { Box001.verts } }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 2 3 0 <Ref> { Box001.verts } }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 4 5 6 <Ref> { Box001.verts } }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 7 8 9 <Ref> { Box001.verts } }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 9 10 7 <Ref> { Box001.verts } }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 11 12 13 <Ref> { Box001.verts } }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 14 15 16 <Ref> { Box001.verts } }
+  }
+  <Polygon> {
+    <RGBA> { 1 1 1 1 }
+    <VertexRef> { 16 17 14 <Ref> { Box001.verts } }
+  }
+}

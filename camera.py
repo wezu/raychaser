@@ -31,7 +31,7 @@ class CameraControler (DirectObject):
         self.key_map = {'rotate': False, 'forward':False, 'back':False,
                         'left':False, 'right':False, 'pan':False,
                         'up':False, 'down':False}
-        taskMgr.add(self.update, "camcon_update")
+        taskMgr.add(self.update, "camcon_update", -50)
 
         self.bind_keys()
 
@@ -45,7 +45,7 @@ class CameraControler (DirectObject):
         if view in views:
             if self.node.get_hpr(render).almost_equal(views[view][0]) and self.gimbal.get_hpr(render).almost_equal(views[view][1]):
                 return
-            else:    
+            else:
                 if num>3:
                         self.node.set_hpr(render, views[view][0])
                         self.gimbal.set_hpr(render, views[view][1])
@@ -165,14 +165,22 @@ class CameraControler (DirectObject):
                 self.node.set_pos(self.node, pos*self.move_speed*dt*100.0)
             #rotate
             if not self.key_map['rotate']:
-                delta=self.last_delta*0.9
-                if abs(delta[0])<0.001:
+                delta=self.last_delta#-Point2(dt*0.1)#*(0.9999-dt)
+                if delta.x <0:
+                    delta.x+=dt*0.1
+                else:
+                    delta.x-=dt*0.1
+                if delta.y <0:
+                    delta.y+=dt*0.1
+                else:
+                    delta.y-=dt*0.1
+                if abs(delta[0])<0.005:
                     delta[0]=0
-                if abs(delta[1])<0.001:
+                if abs(delta[1])<0.005:
                     delta[1]=0
-            self.last_delta=delta
-                #print(delta)
-            p=self.gimbal.get_p()- delta[1]*self.speed*0.5*dt
-            self.gimbal.set_p(p)
-            self.node.set_h(self.node.get_h()- delta[0]*self.speed*0.5*dt)
+            else:
+                self.last_delta=delta
+            p=self.gimbal.get_p()- delta[1]*self.speed*dt
+            self.gimbal.set_p(min(max(p, self.max_p[0]), self.max_p[1]))
+            self.node.set_h(self.node.get_h()- delta[0]*self.speed*dt)
         return task.again

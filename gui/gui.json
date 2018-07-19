@@ -23,21 +23,22 @@
          "scroll":0,
          "autoresize":1,
          "button":  [
-                    {"txt":"Delete","cmd":"app.delete_object()", "width":96, "pos":[26,10]},
-                    {"txt":"Freeze","cmd":"app.freeze_object()", "width":96, "pos":[122,10]}
+                    {"txt":"Delete","cmd":"app.delete_object()", "width":96, "pos":[0,224]},
+                    {"txt":"Freeze","cmd":"app.freeze_object()", "width":96, "pos":[80,224]},
+                    {"txt":"Stash","cmd":"app.freeze_object()", "width":96, "pos":[160,224]}
                     ],
 
          "text":[
-                    {"txt":"Name:\n\n\nPosition(X,Y,Z):\n\n\nRotation(H,P,R):\n\n\nScale(sX,sY,sZ):", "pos":[26,38], "big_font":0, "align":"left"}
+                    {"txt":"Name:\n\n\nPosition(X,Y,Z):\n\n\nRotation(H,P,R):\n\n\nScale(sX,sY,sZ):", "pos":[26,8], "big_font":0, "align":"left"}
                 ],
          "input":[
-                    {"txt":"Foobar",           "width":224, "pos":[16,59], "name":"name_input", "cmd":"app.apply_input(txt, ['name'])"},
-                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,113], "name":"pos_input", "cmd":"app.apply_input(txt, ['x','y','z'])"},
-                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,167], "name":"hpr_input", "cmd":"app.apply_input(txt, ['h','p','r'])"},
-                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,221], "name":"scale_input", "cmd":"app.apply_input(txt, ['sx','sy','sz'])"}
+                    {"txt":"Foobar",           "width":224, "pos":[16,28], "name":"name_input", "cmd":"app.apply_input(txt, ['name'])"},
+                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,82], "name":"pos_input", "cmd":"app.apply_input(txt, ['x','y','z'])"},
+                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,136], "name":"hpr_input", "cmd":"app.apply_input(txt, ['h','p','r'])"},
+                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,190], "name":"scale_input", "cmd":"app.apply_input(txt, ['sx','sy','sz'])"}
                 ],
          "widget":[
-                  {"cmd":"app.gui.show_hide('', 'prop_frame')", "pos":[216, 6], "geom_name":"close_icon"}
+                  {"cmd":"app.gui.show_hide('', 'prop_frame')", "pos":[216, 4], "geom_name":"close_icon"}
                 ]
         },
         {"name":"mesh_prop_frame",
@@ -49,22 +50,21 @@
          "autoresize":1,
          "text":[
                 {"txt":"MATERIAL:\nSiO2", "pos":[0,8], "big_font":0, "name":"material_txt"},
-                {"txt":"SHADING:\nColor(r,g,b):\n\n\nTransparency:\n\n\nGloss:", "pos":[0,186], "big_font":0}
+                {"txt":"SHADING:\nColor(r,g,b):\n\n\nTransparency:\n\n\nGloss:", "pos":[0,152], "big_font":0}
                 ],
          "button":  [
                     {"txt":"Set material...","cmd":"app.gui.show_hide('mat_list_frame')", "width":224, "pos":[12,54]},
                     {"txt":"Refract","cmd":"app.set_object_type('refract')", "name":"button_refract", "width":192, "pos":[28,88]},
                     {"txt":"Reflect","cmd":"app.set_object_type('reflect')", "name":"button_reflect", "width":192, "pos":[28,122]},
-                    {"txt":"Diffuse","cmd":"app.set_object_type('diffuse')", "name":"button_diffuse", "width":192, "pos":[28,156]},
-                    {"txt":"Wireframe","txt_fg":[0.55, 0.55, 0.55, 1.0],"cmd":"app.set_wireframe()", "width":192, "pos":[28,368], "name":"button_wireframe"}
+                    {"txt":"Wireframe","txt_fg":[0.55, 0.55, 0.55, 1.0],"cmd":"app.set_wireframe()", "width":192, "pos":[28,334], "name":"button_wireframe"}
 
                     ],
          "input":[
-                    {"txt":"1.0, 1.0, 1.0","width":224, "pos":[16,230], "name":"color_input", "cmd":"app.apply_input(txt, ['R', 'G', 'B'])"}
+                    {"txt":"1.0, 1.0, 1.0","width":224, "pos":[16,196], "name":"color_input", "cmd":"app.apply_input(txt, ['R', 'G', 'B'])"}
                 ],
          "slider":  [
-                    {"value":0.0,"cmd":"app.set_alpha(value)", "width":224, "pos":[16,280], "name":"alpha_slider"},
-                    {"value":0.0,"cmd":"app.set_gloss(value)", "width":224, "pos":[16,334], "name":"gloss_slider"}
+                    {"value":0.0,"cmd":"app.set_alpha(value)", "width":224, "pos":[16,246], "name":"alpha_slider"},
+                    {"value":0.0,"cmd":"app.set_gloss(value)", "width":224, "pos":[16,300], "name":"gloss_slider"}
                 ]
         },
         {"name":"mat_list_frame",
@@ -115,17 +115,18 @@
          "scroll":0,
          "autoresize":1,
          "text":[
-                {"txt":"   Wavelength(nm):\n\n\n   Number of rays:\nRows, Offset:\n\n\nColumns, Offset:\n\n\n\n\n\n\n        Angle:", "align":"left", "pos":[26,8], "big_font":0}
+                {"txt":"    Wavelength(nm):\n\n\n      Color(rgb):\n\n\n\n\n\n\n    Number of rays:\n     Rows, Offset:\n\n\n   Columns, Offset:\n\n\n         Angle:\n(horizontal, vertical)", "align":"left", "pos":[16,8], "big_font":0}
                 ],
          "input":[
                     {"txt":"650","width":224, "pos":[16,34], "name":"wave_input", "cmd":"app.apply_input(txt, ['wave'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,100], "name":"row_input", "cmd":"app.apply_input(txt, ['row', 'x_offset'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,154], "name":"column_input", "cmd":"app.apply_input(txt, ['row', 'y_offset'])"},
-                    {"txt":"30.0","width":224, "pos":[16,284], "name":"column_input", "cmd":"app.apply_input(txt, ['angle'])"}
+                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,88], "name":"ray_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"},
+                    {"txt":"1, 0.1","width":224, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['row', 'x_offset'])"},
+                    {"txt":"1, 0.1","width":224, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['row', 'y_offset'])"},
+                    {"txt":"0.0, 0.0","width":224, "pos":[16,358], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"}
                 ],
-        "button":  [
-                    {"txt":"Parallel","cmd":"app.set_ray_divergent(False)", "name":"button_parallel","width":192, "pos":[28,198]},
-                    {"txt":"Divergent","txt_fg":[0.55, 0.55, 0.55, 1.0], "cmd":"app.set_ray_divergent(True)","name":"button_divergent", "width":192, "pos":[28,232]}
+         "button":  [
+                    {"txt":"Wavelength to Color","cmd":"app.wavelength_to_color()", "width":224, "pos":[16,122]},
+                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,156]}
                     ]
         },
         {"name":"load_frame",
@@ -188,19 +189,19 @@
         }
          ],
 "button":{
-        "button_save":{"txt":"Save", "cmd":"app.gui.show_hide('save_frame', ['list_frame','load_frame'])", "width":96, "pos":[0,0], "parent":"top_left"},
-        "button_load":{"txt":"Load", "cmd":"app.gui.show_hide('load_frame', ['list_frame','save_frame'])", "width":96, "pos":[96,0], "parent":"top_left"},
-        "button_list":{"txt":"Add/Select", "cmd":"app.gui.toggle('list_frame')", "width":160, "pos":[192,0], "parent":"top_left"},
-        "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[352,0], "parent":"top_left"},
-        "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[500,0], "parent":"top_left"},
+        "button_save":{"txt":"Save", "cmd":"app.gui.show_hide('save_frame', ['list_frame','load_frame'])", "width":96, "pos":[-6,0], "parent":"top_left"},
+        "button_load":{"txt":"Load", "cmd":"app.gui.show_hide('load_frame', ['list_frame','save_frame'])", "width":96, "pos":[78,0], "parent":"top_left"},
+        "button_list":{"txt":"Add/Select", "cmd":"app.gui.toggle('list_frame')", "width":160, "pos":[162,0], "parent":"top_left"},
+        "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[310,0], "parent":"top_left"},
+        "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[460,0], "parent":"top_left"},
 
-        "button_move":{"txt":"Move", "cmd":"app.set_move_mode()", "width":96, "pos":[0,-32], "parent":"bottom_left"},
-        "button_rotate":{"txt":"Rotate", "cmd":"app.set_rotate_mode()", "width":96, "pos":[96,-32], "parent":"bottom_left"},
-        "button_scale":{"txt":"Scale", "cmd":"app.set_scale_mode()", "width":96, "pos":[192,-32], "parent":"bottom_left"},
-        "button_x":{"txt":"X", "cmd":"app.toggle_axis('x')", "width":64, "pos":[288,-32], "parent":"bottom_left"},
-        "button_y":{"txt":"Y", "cmd":"app.toggle_axis('y')", "width":64, "pos":[348,-32], "parent":"bottom_left"},
-        "button_z":{"txt":"Z", "cmd":"app.toggle_axis('z')", "width":64, "pos":[408,-32], "parent":"bottom_left"},
-        "button_local":{"txt":"Global", "cmd":"app.set_coords_local()", "width":96, "pos":[468,-32], "parent":"bottom_left"}
+        "button_move":{"txt":"Move", "cmd":"app.set_move_mode()", "width":96, "pos":[-6,-32], "parent":"bottom_left"},
+        "button_rotate":{"txt":"Rotate", "cmd":"app.set_rotate_mode()", "width":96, "pos":[78,-32], "parent":"bottom_left"},
+        "button_scale":{"txt":"Scale", "cmd":"app.set_scale_mode()", "width":96, "pos":[162,-32], "parent":"bottom_left"},
+        "button_x":{"txt":"X", "cmd":"app.toggle_axis('x')", "width":64, "pos":[246,-32], "parent":"bottom_left"},
+        "button_y":{"txt":"Y", "cmd":"app.toggle_axis('y')", "width":64, "pos":[298,-32], "parent":"bottom_left"},
+        "button_z":{"txt":"Z", "cmd":"app.toggle_axis('z')", "width":64, "pos":[350,-32], "parent":"bottom_left"},
+        "button_local":{"txt":"Global", "cmd":"app.set_coords_local()", "width":96, "pos":[402,-32], "parent":"bottom_left"}
 
         },
 "icon": {},

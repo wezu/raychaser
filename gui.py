@@ -220,7 +220,7 @@ class UI(DirectObject):
         self.last_sort=canvas_name+sort_key
 
         for i, button in enumerate(sorted(button_list, key=operator.itemgetter(sort_key), reverse=reverse)):
-            button['node'].set_z(-32*i)
+            button['node'].set_z(-28*i)
 
     def fade_screen(self, time=1.5, color=(0,0,0)):
         '''Turns the screen to 'color' then fades the color away in 'time' seconds'''

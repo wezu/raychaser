@@ -30,6 +30,7 @@ import sys
 import json
 import time
 import shutil
+import random
 from math import sqrt
 from collections import namedtuple
 from collections import deque
@@ -44,6 +45,7 @@ from camera import CameraControler
 from loading_screen import loading
 from gui import UI
 from gui import math_eval
+from color_palette import ColorPalette
 
 
 #set the window decoration before we start
@@ -54,7 +56,7 @@ WindowProperties.setDefault(wp)
 
 
 #this is used for ray tests return values
-Hit = namedtuple('Hit', 'has_hit pos normal node')
+Hit = namedtuple('Hit', 'has_hit pos normal node next_node')
 Traced = namedtuple('Traced', 'is_internal vector')
 
 class App(DirectObject):
@@ -102,6 +104,7 @@ class App(DirectObject):
                                 'button_move','button_rotate','button_scale'])
 
             self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
+            self.gui.resize_callback.append(self.on_resize)
             #use a better camera controller
             cam_speed=ConfigVariableDouble('camera-speed', 1.0).get_value()
             cam_zoom_speed=ConfigVariableDouble('camera-zoom-speed', 1.0).get_value()
@@ -127,6 +130,13 @@ class App(DirectObject):
             self.ray_trav = CollisionTraverser()
             #self.ray_trav.show_collisions(render)
             self.ray_handler = CollisionHandlerQueue()
+            self.collison_ray_np = render.attach_new_node(CollisionNode('ray'))
+            self.collison_ray=CollisionRay()
+            self.collison_ray_np.node().add_solid(self.collison_ray)
+            self.collison_ray_np.node().set_from_collide_mask(self.ray_mask)
+            self.collison_ray_np.node().set_into_collide_mask(0)
+
+
 
             picker_np = camera.attach_new_node(CollisionNode('mouseRay'))
             #picker_np.node().set_from_collide_mask(GeomNode.getDefaultCollideMask())
@@ -154,6 +164,7 @@ class App(DirectObject):
             self.make_grid()
 
             self.lit_shader=Shader.load(Shader.SLGLSL, 'shaders/litsphere_v.glsl', 'shaders/litsphere_f.glsl')
+            self.point_shader=Shader.load(Shader.SLGLSL, 'shaders/point_v.glsl', 'shaders/point_f.glsl')
             render.set_shader_input('litex', loader.load_texture('data/lit_sphere3.png'))
             #find data to load
             self.find_models('refract')
@@ -173,6 +184,8 @@ class App(DirectObject):
             self._setup_select_buff()
             self.ortho_cam(True)
 
+            self.colors=ColorPalette()
+
             self.in_que=deque()
             self.out_que=deque()
             self.deamon_stop_event= threading.Event()
@@ -185,15 +198,16 @@ class App(DirectObject):
             taskMgr.add(self._lock_mouse_task, 'mouse_lock_tsk')
             taskMgr.add(self._update, 'update_tsk')
 
-        self.splash=self.gui.img('gui/splash.png', 'center', (-512,-384))
+        self.splash=self.gui.img('gui/splash.png', 'left', (0,-384))
         self.splash.set_bin("fixed", 11)
         base.buttonThrowers[0].node().setButtonDownEvent('buttonDown')
         self.accept('buttonDown', self.remove_splash)
-        self.print_txt('                 [Press any key to continue]')
+        self.print_txt('                                    [Press any key to continue]')
         #self.gui.fade_screen(0.5, base.get_background_color())
         #self.load_object('smiley')
 
     def remove_splash(self, key_event=None):
+        '''Removes the splash screen'''
         self.splash.hide()
         self.gui.fade_screen(0.5, base.get_background_color())
         self.ignore('buttonDown')
@@ -203,8 +217,11 @@ class App(DirectObject):
         fr.set_x(pixel2d, fr_pos.x-256)
         fr.show()
 
+    def on_resize(self):
+        render.set_shader_input("screen_size", Vec2(*base.get_size()))
 
     def set_flip_normal(self):
+        '''GUI callback - sets the  flip_model_normal flag'''
         if self.flip_model_normal:
             self.flip_model_normal=False
             self.gui.fade_out('button_normal')
@@ -214,6 +231,7 @@ class App(DirectObject):
 
 
     def set_write_bam(self):
+        '''GUI callback - sets the  write_model_bam flag'''
         if self.write_model_bam:
             self.write_model_bam=False
             self.gui.fade_out('button_bam')
@@ -222,7 +240,9 @@ class App(DirectObject):
             self.gui.fade_in('button_bam')
 
     def _update(self, task):
+        '''Update task, called every frame'''
         dt = globalClock.getDt()
+        render.set_shader_input("camera_pos", base.cam.get_pos(render))
         if self.out_que:
             node_id, points = self.out_que.popleft()
             if points:
@@ -230,6 +250,7 @@ class App(DirectObject):
         return task.again
 
     def ray_deamon(self, stop_event):
+        '''Deamon function, executes the ray tracing in a separate thread '''
         while not stop_event.is_set():
             sleep_time=0.16666 #~1.0/60.0
             if self.in_que:
@@ -240,9 +261,11 @@ class App(DirectObject):
             time.sleep(sleep_time)
 
     def trace_ray_in_thread(self, node_id):
+        '''Adds a node to the raytracing que'''
         self.in_que.append(node_id)
 
     def find_models(self, dir):
+        '''Looks for models in a given directory, adds gui buttons for each model found'''
         for fn in os.listdir('models/'+dir):
                 f=Filename(fn)
                 if f.get_extension() in ('bam', 'egg', '3d', '3ds', '3mf',
@@ -267,6 +290,7 @@ class App(DirectObject):
         self.gui.sort_buttons('model_frame_canvas', 'type', False)
 
     def ortho_cam(self, set_orto=None):
+        '''GUI callback -sets the main camera into orthographic or perspective mode'''
         if set_orto is None:
             set_orto=base.camLens.is_perspective()
         if set_orto:
@@ -289,6 +313,10 @@ class App(DirectObject):
             self.gui.fade_out('button_cam')
 
     def set_object_type(self, object_type='refract'):
+        '''Sets the type of the object, valid types are:
+        -refract
+        -reflect
+        -beamsplit'''
         if self.selected_id is None:
             return
         node=self.objects[self.selected_id]
@@ -304,6 +332,7 @@ class App(DirectObject):
             self.do_raytrace()
 
     def set_material(self, material='SiO2'):
+        ''' Sets the material of the currently selected object'''
         if self.selected_id is None:
             return
         node=self.objects[self.selected_id]
@@ -367,6 +396,7 @@ class App(DirectObject):
         self.do_raytrace()
 
     def hide_grid(self):
+        '''GUI callback - shows or hides the grid'''
         if self.grid.is_hidden():
             self.grid.show()
             self.gui.fade_in('button_grid')
@@ -375,6 +405,7 @@ class App(DirectObject):
             self.gui.fade_out('button_grid')
 
     def make_grid(self, scale=10.0):
+        '''Creates a 10x10 grid of given size'''
         l=LineSegs()
         l.set_color(Vec4(0.1, 0.38, 0.23, 1.0))
         l.set_thickness(2.0)
@@ -396,6 +427,7 @@ class App(DirectObject):
         self.grid.set_scale(scale)
 
     def clear_scene(self):
+        '''Removes all objects from the scene'''
         for n, node in enumerate(self.objects):
             self.delete_object(n)
         self.objects=[]
@@ -425,7 +457,7 @@ class App(DirectObject):
             self.axis.find('z').hide()
 
     def center_camera(self, object_id=None):
-        '''move  the camera to the object  '''
+        '''move  the camera to the object, sort of...  '''
         if object_id is None:
             object_id =self.selected_id
         if object_id <= len(self.objects):
@@ -451,7 +483,7 @@ class App(DirectObject):
 
     def _do_cmd_from_txt(self, txt, value):
         ''' execute commad based  on string,
-        this function is to  help with text entry widgets'''
+        this function is to help with text entry widgets'''
         if txt == 'grid':
             self.grid.set_scale(value)
             self.gui['input_grid'].set('{0:.2f}'.format(*self.grid.get_scale(render)))
@@ -523,6 +555,7 @@ class App(DirectObject):
             self._do_cmd_from_txt(txt, value)
 
     def update_ui_for_node(self, node):
+        '''Updates the sliders and input fields of the object properties panel '''
         self.gui.show_hide('prop_frame')
         self.gui['name_input'].set(node.get_python_tag('name'))
         self.gui['pos_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*node.get_pos(render)))
@@ -547,6 +580,7 @@ class App(DirectObject):
                 self.gui.fade_in('button_'+t)
 
     def freeze_object(self):
+        '''Disables mouse ray collisions for the selected object '''
         pass
 
     def select_by_id(self, id):
@@ -559,8 +593,6 @@ class App(DirectObject):
         node.show_through(self.select_mask)
         self.selected_id=id
         self.update_ui_for_node(node)
-
-
 
     def set_select_mode(self):
         self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
@@ -677,6 +709,7 @@ class App(DirectObject):
                     self.toggle_axis(axis)
 
     def _unlock_mouse(self):
+        '''Called when the user lets go of the left mouse button '''
         if self.mouse_lock:
             wp = WindowProperties(base.win.getRequestedProperties())
             wp.set_cursor_hidden(False)
@@ -698,6 +731,7 @@ class App(DirectObject):
                     self.axis.set_hpr(node.get_hpr(render))
 
     def _mouse_move_node(self, node, delta):
+        '''Helper function for moving a node based on the camera angle '''
         if self.active_axis == ['x']:
             node.set_pos(self.axis, -delta.x-delta.y, 0, 0)
         elif self.active_axis == ['y']:
@@ -740,6 +774,7 @@ class App(DirectObject):
 
 
     def _lock_mouse(self):
+        ''' Hides the mouse cursor and locks the mouse to the window'''
         if base.mouseWatcherNode.has_mouse():
             self.last_mouse_pos=base.mouseWatcherNode.get_mouse()
             self.pre_click_mouse_pos=base.win.get_pointer(0)
@@ -752,6 +787,8 @@ class App(DirectObject):
         self.mouse_lock=True
 
     def _lock_mouse_task(self, task):
+        '''Track the mouse cursor movement inside the window
+        and reacts to the motion depending on current mode'''
         dt = globalClock.getDt()
         if self.mouse_lock:
             if self.mouse_lock_frame_skip:
@@ -796,6 +833,7 @@ class App(DirectObject):
         return task.again
 
     def _on_click(self):
+        '''Called when the mouse button is pressed '''
         if base.mouseWatcherNode.has_mouse():
             m_pos = base.mouseWatcherNode.get_mouse()
             self.mouse_ray.set_from_lens(base.camNode, m_pos.get_x(), m_pos.get_y())
@@ -934,16 +972,8 @@ class App(DirectObject):
             B = 1.0
         return Vec4(R,G,B, 1.0)
 
-    def set_ray_divergent(self, divergent=True):
-        if divergent:
-            self.gui.fade_out('button_parallel')
-            self.gui.fade_in('button_divergent')
-        else:
-            self.gui.fade_out('button_divergent')
-            self.gui.fade_in('button_parallel')
-
-
     def do_raytrace(self):
+        '''Update all the rays in the scene '''
         self.in_que.clear()
         self.out_que.clear()
         for node in self.objects:
@@ -951,15 +981,45 @@ class App(DirectObject):
                 if node.get_python_tag('type')=='ray':
                     node_id=node.get_python_tag('id')
                     self.trace_ray_in_thread(node_id)
-                    #points=self.trace_ray(node_id)
-                    #self.draw_line(node_id, points)
 
-    def draw_line(self, node_id, points):
+    def ray_random_color(self):
+        '''GUI callback - changes the current ray color to a different, random color '''
+        if self.selected_id is not None:
+            node=self.objects[self.selected_id]
+            if node:
+                old_color=node.get_python_tag('line_color')
+                color=self.colors.new_color(old_color)
+                node.set_python_tag('line_color', color)
+                line=node.get_python_tag('line')
+                line.set_color(color, 1)
+                self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
+
+
+    def wavelength_to_color(self):
+        '''GUI callback - changes the current ray color to based on its wavelength '''
+        if self.selected_id is not None:
+            node=self.objects[self.selected_id]
+            if node:
+                wavelength=node.get_python_tag('wave')
+                color=self.wavelength_to_rgb(wavelength)
+                node.set_python_tag('line_color', color)
+                line=node.get_python_tag('line')
+                line.set_color(color, 1)
+                self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
+
+    def draw_line(self, node_id, points, color=None):
+        '''Draw lines for node_id '''
         node=self.objects[node_id]
         if node is None:
             return
+        if color is None:
+            if node.has_python_tag('line_color'):
+                color=node.get_python_tag('line_color')
+            else:
+                color=self.colors.new_color()
+                node.set_python_tag('line_color', color)
         line=node.get_python_tag('line')
-        color=line.get_color()
+        #color=line.get_color()
         line.remove_node()
         l=LineSegs()
         l.set_thickness(2.0)
@@ -967,6 +1027,15 @@ class App(DirectObject):
         for point in points:
             l.draw_to(point)
         line=render.attach_new_node(l.create())
+
+        #make points
+        point_node=line.copy_to(render)
+        point_node.set_render_mode(RenderModeAttrib.MPoint, 1.0)
+        shader_attrib = ShaderAttrib.make(self.point_shader)
+        shader_attrib = shader_attrib.setFlag(ShaderAttrib.F_shader_point_size, True)
+        point_node.set_attrib(shader_attrib)
+        point_node.wrt_reparent_to(line)
+
         line.set_color(color, 1)
         line.set_transparency(TransparencyAttrib.M_binary)
         line.set_antialias(AntialiasAttrib.MLine)
@@ -976,6 +1045,9 @@ class App(DirectObject):
         node.set_python_tag('line', line)
         line.wrt_reparent_to(node)
         line.show_through(self.camera_mask)
+
+
+
 
     def trace_ray(self, node_id, max_ray_length=1000.0):
         node=self.objects[node_id]
@@ -990,7 +1062,9 @@ class App(DirectObject):
         if hit.has_hit:
             ior_1=hit.node.get_python_tag('material').n(wavelength)
             while hit.has_hit:
+                print(hit)
                 points.append(hit.pos)
+                #print('points:', len(points))
                 origin=hit.pos
                 do_refract=False
                 do_reflect=False
@@ -1012,16 +1086,18 @@ class App(DirectObject):
                     hit=self._ray(origin, target)
                     if hit.has_hit:
                         if refracted.is_internal: # material->material????
-                            ior_1=hit.node.get_python_tag('material').n(wavelength)
-                            ior_0=ior_1
+                            print('internal!')
+                            break
                         else:
-                            if ior_0 == 1.0: #material->air
-                                ior_0=hit.node.get_python_tag('material').n(wavelength)
+                            ior_0=hit.node.get_python_tag('material').n(wavelength)
+                            try:
+                                ior_1=hit.next_node.get_python_tag('material').n(wavelength)
+                            except:
                                 ior_1=1.0
-                            else:           #air->material
-                                ior_0=1.0
-                                ior_1=hit.node.get_python_tag('material').n(wavelength)
+                #print('hit:')
+                #print(hit)
                 if not do_reflect and not do_refract:
+                    #print('reflect, refract',do_reflect, do_refract )
                     break
             else:
                 points.append(hit.pos)
@@ -1052,30 +1128,49 @@ class App(DirectObject):
 
 
     def _ray(self, origin, target):
+        '''Performs collision detection for a ray going from origin to target '''
         origin=Point3(origin)
-        ray = render.attach_new_node(CollisionNode('ray'))
-        ray.node().add_solid(CollisionRay(origin, Vec3(target)))
-        ray.node().set_from_collide_mask(self.ray_mask)
-        ray.node().set_into_collide_mask(0)
+        self.collison_ray.set_origin(origin)
+        self.collison_ray.set_direction(target)
         self.ray_trav.clear_colliders()
-        self.ray_trav.add_collider(ray, self.ray_handler)
+        self.ray_trav.add_collider(self.collison_ray_np, self.ray_handler)
         self.ray_trav.traverse(render)
+        return_hit=None
+        #print ('from', origin)
+        #print('to', target)
         if self.ray_handler.get_num_entries() > 0:
             self.ray_handler.sort_entries()
             for entry in self.ray_handler.get_entries():
+                #get the data
                 hit_node=entry.get_into_node_path().get_parent()
-                if not hit_node.has_python_tag('id'):
-                    ray.remove_node()
-                    return Hit(False, target, Vec3(0,0,0), None)
                 hit=entry.get_surface_point(render)
                 normal=entry.get_surface_normal(render)
+                #if there is no id, we hit the scene barrier
+                if not hit_node.has_python_tag('id'):
+                    self.ray_trav.clear_colliders()
+                    if return_hit is not None:
+                        return_hit= Hit(return_hit.has_hit, return_hit.pos, return_hit.normal, return_hit.node, hit_node)
+                        self.ray_trav.clear_colliders()
+                        return return_hit
+                    return Hit(False, target, Vec3(0,0,0), None, None)
+                #skip false hits
                 if not hit.almost_equal(origin):
-                    ray.remove_node()
-                    return Hit(True, hit, normal, hit_node)
-        ray.remove_node()
+                    #print(hit_node, hit, normal)
+                    #we don't have any valid hit yet
+                    if return_hit is None:
+                        return_hit= Hit(True, hit, normal, hit_node, None)
+                    elif return_hit.next_node is None: #what's the next hit node?
+                        if not return_hit.pos.almost_equal(hit):
+                            self.ray_trav.clear_colliders()
+                            return Hit(return_hit.has_hit, return_hit.pos, return_hit.normal, return_hit.node, hit_node)
+
+        self.ray_trav.clear_colliders()
+        if return_hit is not None:
+            return return_hit
         return Hit(False, target, Vec3(0,0,0), None)
 
     def _make_smooth_mesh(self, triangles, threshold=20.0, flip_normal=True):
+        '''Creates a smooth mesh from a list of triangles'''
         egg = EggData()
         pool = EggVertexPool('vertex_pool')
         egg.add_child(pool)
@@ -1098,6 +1193,7 @@ class App(DirectObject):
         return NodePath(loadEggData( egg ))
 
     def _get_triangles(self, mesh, points=[]):
+        '''Returns all triangles in a mesh '''
         for child in mesh.get_children():
             node=child.node()
             if node.is_geom_node():
@@ -1121,6 +1217,7 @@ class App(DirectObject):
         return points
 
     def set_wireframe(self):
+        '''GUI callback - set the wireframe render mode on/off'''
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
             if node:
@@ -1134,12 +1231,14 @@ class App(DirectObject):
 
 
     def set_gloss(self, value):
+        '''Set glossiness [0.0-1.0] for the current object '''
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
             if node:
                 node.set_shader_input('gloss', float(value))
 
     def set_alpha(self, value):
+        '''Set transparency [0.0-1.0] for the current object '''
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
             if node:
@@ -1147,22 +1246,8 @@ class App(DirectObject):
                 c[3]=1.01-value
                 node.set_color(c)
 
-    def flip_normals(self):
-        if self.selected_id is not None:
-            node=self.objects[self.selected_id]
-            if node:
-                attr=node.get_attrib(CullFaceAttrib).get_effective_mode()
-                if attr == CullFaceAttrib.M_cull_clockwise:
-                    node.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_counter_clockwise))
-                    self.print_txt('Backface culling: counter clockwise.')
-                elif attr == CullFaceAttrib.M_cull_counter_clockwise:
-                    node.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_none ))
-                    self.print_txt('Backface culling: off')
-                else:
-                    node.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_clockwise))
-                    self.print_txt('Backface culling: clockwise.')
-
     def make_ray(self):
+        '''Creates a new ray object'''
         mesh=loader.load_model('data/cylinder.egg')
         mesh.reparent_to(self.scene)
         self.objects.append(mesh)
@@ -1171,7 +1256,9 @@ class App(DirectObject):
         mesh.set_python_tag('id', id)
         mesh.set_python_tag('type', 'ray')
         mesh.set_python_tag('wave', 650)
-        mesh.set_color(LColor(1.0))
+        color=self.colors.new_color()
+        mesh.set_python_tag('line_color', color)
+        self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
         mesh.set_transparency(TransparencyAttrib.M_alpha)
         #collision
         c_node=mesh.attach_new_node(CollisionNode('cnode'))
@@ -1186,7 +1273,7 @@ class App(DirectObject):
         l.move_to(Vec3(0,0,0))
         l.draw_to(Vec3(0, 100, 0))
         line=mesh.attach_new_node(l.create())
-        line.set_color(self.wavelength_to_rgb(650), 1)
+        line.set_color(color, 1)
         line.set_transparency(TransparencyAttrib.M_binary)
         line.set_antialias(AntialiasAttrib.MLine)
         line.set_depth_test(False)
@@ -1253,7 +1340,7 @@ class App(DirectObject):
         for points in triangles:
             #print(points)
             c_node.node().add_solid(CollisionPolygon(*points))
-            c_node.node().add_solid(CollisionPolygon(*reversed(points)))
+            #c_node.node().add_solid(CollisionPolygon(*reversed(points)))
         c_node.node().set_into_collide_mask(self.obj_mask)
 
         mesh.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_clockwise))

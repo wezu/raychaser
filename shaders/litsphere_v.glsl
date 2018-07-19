@@ -14,7 +14,7 @@ out vec3 V;
 
 void main()
     {
-    gl_Position = p3d_ModelViewProjectionMatrix * p3d_Vertex;    
+    gl_Position = p3d_ModelViewProjectionMatrix * p3d_Vertex;
     N=p3d_NormalMatrix* p3d_Normal;
     V=vec4(p3d_ModelViewMatrix *p3d_Vertex).xyz;
     }

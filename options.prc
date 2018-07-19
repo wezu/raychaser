@@ -1,5 +1,5 @@
 show-frame-rate-meter  1
-sync-video 1
+sync-video 0
 antialias_msaa 0
 win-size  1280 720
 camera-speed 1.0
