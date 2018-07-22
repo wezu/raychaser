@@ -54,8 +54,8 @@
                 ],
          "button":  [
                     {"txt":"Set material...","cmd":"app.gui.show_hide('mat_list_frame')", "width":224, "pos":[12,54]},
-                    {"txt":"Refract","cmd":"app.set_object_type('refract')", "name":"button_refract", "width":192, "pos":[28,88]},
-                    {"txt":"Reflect","cmd":"app.set_object_type('reflect')", "name":"button_reflect", "width":192, "pos":[28,122]},
+                    {"txt":"Refract","cmd":"app.set_refract()", "name":"button_refract", "width":192, "pos":[28,88]},
+                    {"txt":"Reflect","cmd":"app.set_reflect()", "name":"button_reflect", "width":192, "pos":[28,122]},
                     {"txt":"Wireframe","txt_fg":[0.55, 0.55, 0.55, 1.0],"cmd":"app.set_wireframe()", "width":192, "pos":[28,334], "name":"button_wireframe"}
 
                     ],
@@ -120,9 +120,9 @@
          "input":[
                     {"txt":"650","width":224, "pos":[16,34], "name":"wave_input", "cmd":"app.apply_input(txt, ['wave'])"},
                     {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,88], "name":"ray_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['row', 'x_offset'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['row', 'y_offset'])"},
-                    {"txt":"0.0, 0.0","width":224, "pos":[16,358], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"}
+                    {"txt":"1, 0.1","width":224, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['column', 'column_offset'])"},
+                    {"txt":"1, 0.1","width":224, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['row', 'row_offset'])"},
+                    {"txt":"0.0, 0.0","width":224, "pos":[16,358], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle_x', 'angle_y'])"}
                 ],
          "button":  [
                     {"txt":"Wavelength to Color","cmd":"app.wavelength_to_color()", "width":224, "pos":[16,122]},

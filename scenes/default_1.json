@@ -1,0 +1,75 @@
+[
+    {
+        "tags": {
+            "id": 0,
+            "flip_normal": null,
+            "threshold": null,
+            "type": "refract",
+            "material_name": "SiO2",
+            "name": "smiley",
+            "model_file": "models/refract/smiley.egg"
+        },
+        "pos": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "hpr": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    {
+        "tags": {
+            "id": 1,
+            "type": "ray",
+            "wave": 650,
+            "rows": 3,
+            "columns": 1,
+            "column_offset": 0.2,
+            "row_offset": 0.1,
+            "angle_x": 0,
+            "angle_y": 0,
+            "line_color": [
+                0.8199999928474426,
+                0.5,
+                0.7300000190734863,
+                1.0
+            ],
+            "name": "Ray #1"
+        },
+        "pos": [
+            0.0,
+            -2.0,
+            0.0
+        ],
+        "hpr": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ]
+    }
+]

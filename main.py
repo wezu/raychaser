@@ -2,6 +2,18 @@
 #pip install opticalmaterialspy
 #pip install panda3d
 
+##TODO:
+##-ray array
+##-simple projector 
+##-freeze
+##-stash
+##-load .step (how!?!)
+##-refract shader (low)
+##-shade rays behind objects(low)
+##-lens design
+##-default materials 
+##-opticalmaterialspy replacement without scipy, numpy
+
 import opticalmaterialspy as mat_spy
 from panda3d.core import *
 from panda3d.egg import *
@@ -46,6 +58,7 @@ from loading_screen import loading
 from gui import UI
 from gui import math_eval
 from color_palette import ColorPalette
+from custom_encoder import CustomEncoder
 
 
 #set the window decoration before we start
@@ -56,7 +69,7 @@ WindowProperties.setDefault(wp)
 
 
 #this is used for ray tests return values
-Hit = namedtuple('Hit', 'has_hit pos normal node next_node')
+Hit = namedtuple('Hit', 'has_hit pos normal node next_node next_pos')
 Traced = namedtuple('Traced', 'is_internal vector')
 
 class App(DirectObject):
@@ -87,12 +100,14 @@ class App(DirectObject):
             self.selected_id=None
             self.flip_model_normal=False
             self.write_model_bam=False
-
+            self.scene_buttons=[]
             self.mode='select'
             self.global_coords=True
             self.active_axis=['x','y','z']
             self.objects=[]
             self.scene=render.attach_new_node('scene')
+            self.max_points=ConfigVariableInt('max-points', 1000).get_value()
+            
             #cam mask
             base.cam.node().set_camera_mask(self.camera_mask)
 
@@ -123,7 +138,10 @@ class App(DirectObject):
             self.cam_driver.bind_keys(**key_binds)
             self.cam_driver.node.set_h(45)
             self.cam_driver.gimbal.set_p(45)
+            self._setup_select_buff()
+            self.ortho_cam(True)
 
+            
             #collision, mouse picking setup
             self.cam_ray_trav = CollisionTraverser()
             self.cam_ray_handler = CollisionHandlerQueue()
@@ -135,8 +153,6 @@ class App(DirectObject):
             self.collison_ray_np.node().add_solid(self.collison_ray)
             self.collison_ray_np.node().set_from_collide_mask(self.ray_mask)
             self.collison_ray_np.node().set_into_collide_mask(0)
-
-
 
             picker_np = camera.attach_new_node(CollisionNode('mouseRay'))
             #picker_np.node().set_from_collide_mask(GeomNode.getDefaultCollideMask())
@@ -160,9 +176,9 @@ class App(DirectObject):
             self.axis.find('x').hide()
             self.axis.find('y').hide()
             self.axis.find('z').hide()
-
+            #grid setup
             self.make_grid()
-
+            #shader setup
             self.lit_shader=Shader.load(Shader.SLGLSL, 'shaders/litsphere_v.glsl', 'shaders/litsphere_f.glsl')
             self.point_shader=Shader.load(Shader.SLGLSL, 'shaders/point_v.glsl', 'shaders/point_f.glsl')
             render.set_shader_input('litex', loader.load_texture('data/lit_sphere3.png'))
@@ -171,6 +187,7 @@ class App(DirectObject):
             self.find_models('reflect')
             self.find_models('beamsplit')
             self.find_models('absorb')
+            self.find_scenes('scenes')
             #mouse keys
             self.accept('mouse1', self._on_click)
             self.accept('mouse1-up', self._unlock_mouse)
@@ -179,10 +196,6 @@ class App(DirectObject):
 
             base.win.set_close_request_event('exit-event')
             self.accept('exit-event', self._on_exit)
-
-            #camera again
-            self._setup_select_buff()
-            self.ortho_cam(True)
 
             self.colors=ColorPalette()
 
@@ -193,7 +206,6 @@ class App(DirectObject):
             self.deamon.setDaemon(True)
             self.deamon.start()
 
-
             # Task
             taskMgr.add(self._lock_mouse_task, 'mouse_lock_tsk')
             taskMgr.add(self._update, 'update_tsk')
@@ -202,7 +214,7 @@ class App(DirectObject):
         self.splash.set_bin("fixed", 11)
         base.buttonThrowers[0].node().setButtonDownEvent('buttonDown')
         self.accept('buttonDown', self.remove_splash)
-        self.print_txt('                                    [Press any key to continue]')
+        self.print_txt('[Press any key to continue]')
         #self.gui.fade_screen(0.5, base.get_background_color())
         #self.load_object('smiley')
 
@@ -212,14 +224,74 @@ class App(DirectObject):
         self.gui.fade_screen(0.5, base.get_background_color())
         self.ignore('buttonDown')
         self.print_txt('')
-        fr=NodePath(base.frameRateMeter)
-        fr_pos=fr.get_pos(pixel2d)
-        fr.set_x(pixel2d, fr_pos.x-256)
-        fr.show()
-
+        try:
+            fr=NodePath(base.frameRateMeter)
+            fr_pos=fr.get_pos(pixel2d)
+            fr.set_x(pixel2d, fr_pos.x-256)
+            fr.show()
+        except:
+            pass
+            
     def on_resize(self):
         render.set_shader_input("screen_size", Vec2(*base.get_size()))
 
+    def save_scene(self):
+        target_file=self.gui['save_path_input'].get()
+        scene=[]
+        for node in self.objects:
+            if node:
+                data={}
+                tags={}
+                for key in node.get_python_tag_keys():
+                    if key not in ('material', 'line'):
+                        tags[key]=node.get_python_tag(key)
+                data['tags']=tags    
+                data['pos']=node.get_pos(render)
+                data['hpr']=node.get_hpr(render)
+                data['scale']=node.get_scale(render)                
+                data['color']=node.get_color()
+                scene.append(data)
+        #dump to json
+        with open(target_file, 'w') as outfile:
+            json.dump(scene, outfile, cls=CustomEncoder, indent=4)
+        
+        self.gui.show_hide('', 'save_frame')
+        self.print_txt('Scene saved to '+target_file)
+        self.find_scenes('scenes')
+        
+    def load_scene(self, file_name):
+        self.clear_scene()
+        if os.path.exists(file_name):
+            with open(file_name) as f:
+                data = json.load(f)
+                for item in data:
+                    if item['tags']['type']=='ray':
+                        self.make_ray(color=item['tags']['line_color'],
+                                      wavelength=item['tags']['wave'],
+                                      model_name=item['tags']['name'],
+                                      pos=item['pos'],
+                                      hpr=item['hpr'],
+                                      scale=item['scale'],
+                                      columns=item['tags']['columns'],
+                                      rows=item['tags']['rows'],
+                                      column_offset=item['tags']['column_offset'],
+                                      row_offset=item['tags']['row_offset'],
+                                      angle_y=item['tags']['angle_y'],
+                                      angle_x=item['tags']['angle_x'])                         
+                    else:
+                        self.load_object(model=item['tags']['model_file'],
+                                         select=False,
+                                         object_type=item['tags']['type'],
+                                         threshold=item['tags']['threshold'],
+                                         flip_normal=item['tags']['flip_normal'])
+                        node=self.objects[-1]
+                        node.set_pos(*item['pos'])                        
+                        node.set_hpr(*item['hpr'])                        
+                        node.set_scale(*item['scale'])
+                        self.set_material(material=item['tags']['material_name'], node=node)
+                        
+        self.gui.show_hide('', 'load_frame')
+            
     def set_flip_normal(self):
         '''GUI callback - sets the  flip_model_normal flag'''
         if self.flip_model_normal:
@@ -239,30 +311,23 @@ class App(DirectObject):
             self.write_model_bam=True
             self.gui.fade_in('button_bam')
 
-    def _update(self, task):
-        '''Update task, called every frame'''
-        dt = globalClock.getDt()
-        render.set_shader_input("camera_pos", base.cam.get_pos(render))
-        if self.out_que:
-            node_id, points = self.out_que.popleft()
-            if points:
-                self.draw_line(node_id, points)
-        return task.again
-
-    def ray_deamon(self, stop_event):
-        '''Deamon function, executes the ray tracing in a separate thread '''
-        while not stop_event.is_set():
-            sleep_time=0.16666 #~1.0/60.0
-            if self.in_que:
-                node_id= self.in_que.popleft()
-                points=self.trace_ray(node_id)
-                self.out_que.append((node_id, points))
-                sleep_time=0
-            time.sleep(sleep_time)
-
-    def trace_ray_in_thread(self, node_id):
-        '''Adds a node to the raytracing que'''
-        self.in_que.append(node_id)
+    def find_scenes(self, dir):
+        for button_name in self.scene_buttons:
+            self.gui.remove_button(button_name)
+        self.scene_buttons=[]    
+        for fn in os.listdir(dir):
+            f=Filename(fn)
+            self.scene_buttons.append('button_'+fn)
+            app.gui.button(txt='{name:<40}'.format(name=f.getBasename()),
+                                   sort_dict={'name':fn},
+                                   mono_font=True,
+                                   align='left',
+                                   cmd='app.load_scene("'+dir+'/'+fn+'")',
+                                   width=384,
+                                   pos=(16,0),
+                                   name='button_'+fn,
+                                   parent='load_frame_canvas')
+        self.gui.sort_buttons('load_frame_canvas', 'name', False)
 
     def find_models(self, dir):
         '''Looks for models in a given directory, adds gui buttons for each model found'''
@@ -283,7 +348,7 @@ class App(DirectObject):
                                        sort_dict={'name':fn, 'type':dir},
                                        mono_font=True,
                                        align='left',
-                                       cmd="app.load_object('models/"+dir+'/'+fn+"', select=True, object_type='refract')",
+                                       cmd="app.load_object('models/"+dir+'/'+fn+"', select=True, object_type='"+dir+"')",
                                        width=384,
                                        pos=(16,0),
                                        parent='model_frame_canvas')
@@ -311,9 +376,62 @@ class App(DirectObject):
             base.cam.node().set_lens(base.camLens)
             self.select_cam.node().set_lens(base.camLens)
             self.gui.fade_out('button_cam')
-
+            
+    def set_reflect(self):
+        if self.selected_id is None:
+            return
+        node=self.objects[self.selected_id]
+        if node:
+            object_type=node.get_python_tag('type')
+            if object_type=='refract':
+                node.set_python_tag('type','beamsplit')
+                self.gui.fade_in('button_reflect')
+            elif object_type=='reflect':
+                node.set_python_tag('type','absorb')
+                self.gui.fade_out('button_reflect')
+            elif object_type=='beamsplit':                    
+                node.set_python_tag('type','refract')
+                self.gui.fade_out('button_reflect')
+            elif object_type=='absorb':
+                node.set_python_tag('type','reflect')
+                self.gui.fade_in('button_reflect')
+            name=node.get_python_tag('name')
+            id=node.get_python_tag('id')
+            object_type=node.get_python_tag('type')
+            text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
+            text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=name, type=object_type, id=id))
+            
+            self.do_raytrace()  
+            
+    def set_refract(self):
+        if self.selected_id is None:
+            return
+        node=self.objects[self.selected_id]
+        if node:
+            object_type=node.get_python_tag('type')
+            if object_type=='refract':
+                node.set_python_tag('type','absorb')
+                self.gui.fade_out('button_refract')
+            elif object_type=='reflect':
+                node.set_python_tag('type','beamsplit')
+                self.gui.fade_in('button_refract')
+            elif object_type=='beamsplit':
+                node.set_python_tag('type','reflect')
+                self.gui.fade_out('button_refract')
+            elif object_type=='absorb':
+                node.set_python_tag('type','refract')
+                self.gui.fade_in('button_refract')
+            name=node.get_python_tag('name')
+            id=node.get_python_tag('id')
+            object_type=node.get_python_tag('type')
+            text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
+            text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=name, type=object_type, id=id))
+            
+            self.do_raytrace()
+            
     def set_object_type(self, object_type='refract'):
         '''Sets the type of the object, valid types are:
+        -absorb
         -refract
         -reflect
         -beamsplit'''
@@ -331,11 +449,12 @@ class App(DirectObject):
             self.gui.fade_in('button_'+object_type)
             self.do_raytrace()
 
-    def set_material(self, material='SiO2'):
+    def set_material(self, material='SiO2', node=None):
         ''' Sets the material of the currently selected object'''
-        if self.selected_id is None:
-            return
-        node=self.objects[self.selected_id]
+        if node is None:
+            if self.selected_id is None:
+                return
+            node=self.objects[self.selected_id]
         if node is None:
             return
         if material=='Ktp x':
@@ -441,12 +560,8 @@ class App(DirectObject):
             node=self.objects[object_id]
             if node is None:
                 return
-            node.clear_python_tag('id')
-            node.clear_python_tag('type')
-            node.clear_python_tag('material')
-            node.clear_python_tag('material_name')
-            node.clear_python_tag('name')
-            node.clear_python_tag('line')
+            for key in node.get_python_tag_keys():
+                node.clear_python_tag(key)
             node.remove_node()
             self.gui.remove_button('button_object_'+str(object_id))
             self.gui.show_hide('', 'prop_frame')
@@ -511,27 +626,39 @@ class App(DirectObject):
         elif txt == 'R':
             c=node.get_color()
             c[0]=value
-            node.set_color(c)
+            node.set_color(c, 1)
         elif txt == 'G':
             c=node.get_color()
             c[1]=value
-            node.set_color(c)
+            node.set_color(c, 1)
         elif txt == 'B':
             c=node.get_color()
             c[2]=value
-            node.set_color(c)
+            node.set_color(c, 1)
         elif txt == 'wave':
             value=max(300, min(5000, value))
-            color=self.wavelength_to_rgb(value)
+            #color=self.wavelength_to_rgb(value)
             node.set_python_tag('wave', value)
-            line=node.get_python_tag('line')
-            line.set_color(color, 1)
+            #line=node.get_python_tag('line')
+            #line.set_color(color, 1)
         elif txt == 'name':
             node.set_python_tag('name', value)
             id=node.get_python_tag('id')
             object_type=node.get_python_tag('type')
             text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
             text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=value, type=object_type, id=id))
+        elif txt=='column':
+            node.set_python_tag('columns', value)
+        elif txt=='row':            
+            node.set_python_tag('rows', value)
+        elif txt=='column_offset':
+            node.set_python_tag('column_offset', value)
+        elif txt=='row_offset':
+            node.set_python_tag('row_offset', value)
+        elif txt=='angle_x':
+            node.set_python_tag('angle_x', value)        
+        elif txt=='angle_y':
+            node.set_python_tag('angle_y', value)
         else:
             return
         self.update_ui_for_node(node)
@@ -576,9 +703,12 @@ class App(DirectObject):
                 self.gui['alpha_slider']['value']=1.0-c[3]
                 gloss=node.get_shader_input('gloss').get_vector()[0]
                 self.gui['gloss_slider']['value']=gloss
-                self.gui.fade_out(['button_refract', 'button_reflect','button_diffuse'])
-                self.gui.fade_in('button_'+t)
-
+                self.gui.fade_out(['button_refract', 'button_reflect'])
+                if t in ('reflect', 'refract'):
+                    self.gui.fade_in('button_'+t)
+                elif t=='beamsplit':
+                    self.gui.fade_in(['button_refract', 'button_reflect'])
+                
     def freeze_object(self):
         '''Disables mouse ray collisions for the selected object '''
         pass
@@ -938,7 +1068,6 @@ class App(DirectObject):
         Based on code by Dan Bruton
         http://www.physics.sfasu.edu/astro/color/spectra.html
         '''
-
         wavelength = max(380, min(750, wavelength))
         if wavelength >= 380 and wavelength <= 440:
             attenuation = 0.3 + 0.7 * (wavelength - 380) / (440 - 380)
@@ -1024,8 +1153,15 @@ class App(DirectObject):
         l=LineSegs()
         l.set_thickness(2.0)
         l.move_to(node.get_pos(render))
+        move_next=False
         for point in points:
-            l.draw_to(point)
+            if point is None:
+                move_next=True
+            elif move_next:
+                l.move_to(point)
+                move_next=False
+            else:            
+                l.draw_to(point)
         line=render.attach_new_node(l.create())
 
         #make points
@@ -1045,66 +1181,106 @@ class App(DirectObject):
         node.set_python_tag('line', line)
         line.wrt_reparent_to(node)
         line.show_through(self.camera_mask)
+        
+    def _update(self, task):
+        '''Update task, called every frame'''
+        dt = globalClock.getDt()
+        render.set_shader_input("camera_pos", base.cam.get_pos(render))
+        if self.out_que:
+            node_id, points = self.out_que.popleft()
+            if points:
+                self.draw_line(node_id, points)                
+        return task.again
 
+    def ray_deamon(self, stop_event):
+        '''Deamon function, executes the ray tracing in a separate thread '''
+        while not stop_event.is_set():
+            sleep_time=0.16666 #~1.0/60.0
+            if self.in_que:
+                poped= self.in_que.popleft()
+                node=self.objects[poped]
+                node_id=poped
+                if node is None:   
+                    continue
+                wavelength=node.get_python_tag('wave')
+                rows=node.get_python_tag('rows')
+                columns=node.get_python_tag('columns')
+                row_offset=node.get_python_tag('row_offset')
+                column_offset=node.get_python_tag('column_offset')
+                x_angle=node.get_python_tag('x_angle')
+                y_angle=node.get_python_tag('y_angle')
+                origin=node.get_pos(render)
+                new_origin=node.get_pos(render)                
+                target=node.get_quat().get_forward()*1000.0
+                points=[]
+                for row in range(rows):
+                    for column in range(columns):                        
+                        new_origin.x=origin.x+row*row_offset
+                        new_origin.z=origin.z+column*column_offset
+                        self.trace_ray(Point3(*new_origin), wavelength, new_origin, target, 1.0, points, [])                          
+                self.out_que.append((node_id, points))
+                sleep_time=0
+            time.sleep(sleep_time)
 
+    def trace_ray_in_thread(self, node_id):
+        '''Adds a node to the raytracing que'''
+        self.in_que.append(node_id)
 
-
-    def trace_ray(self, node_id, max_ray_length=1000.0):
-        node=self.objects[node_id]
-        if node is None:
-            return None
-        wavelength=node.get_python_tag('wave')
-        origin=node.get_pos(render)
-        target=node.get_quat().get_forward()*1000.0
+    def trace_ray(self, start_pos, wavelength, origin, target, last_ior, points=[], split=[]):
+        if points:
+            if points[-1] is None:
+                points.append(start_pos)
+        if len(points)>self.max_points:
+            self.print_txt('To many points!')
+            return
+        max_ray_length=1000.0
         hit=self._ray(origin, target)
-        points=[]
-        ior_0=1.0
         if hit.has_hit:
-            ior_1=hit.node.get_python_tag('material').n(wavelength)
-            while hit.has_hit:
-                print(hit)
-                points.append(hit.pos)
-                #print('points:', len(points))
-                origin=hit.pos
-                do_refract=False
-                do_reflect=False
-                object_type=hit.node.get_python_tag('type')
-                if object_type=='reflect':
-                    do_reflect=True
-                if object_type=='refract':
-                    do_refract=True
-                if object_type=='beamsplit':
-                    do_refract=True
-                    do_reflect=True
-                if do_reflect:
-                    reflected=self.reflect(target.normalized(), hit.normal)
-                    target=reflected*max_ray_length
-                    hit=self._ray(origin, target)
-                if do_refract:
-                    refracted=self.refract(target.normalized(), hit.normal, ior_0, ior_1)
+            points.append(hit.pos)
+            if last_ior == 1.0:
+                ior=hit.node.get_python_tag('material').n(wavelength)
+            elif hit.next_node is None:
+                ior=1.0
+            elif not hit.next_node.has_python_tag('id'):
+                ior=1.0
+            elif hit.node == hit.next_node:
+                ior=1.0
+            elif (hit.pos-hit.next_pos).length()>0.5:
+                ior=1.0
+            elif (hit.pos-hit.next_pos).length()<=0.5:
+                ior=hit.next_node.get_python_tag('material').n(wavelength)
+            else:    
+                ior=hit.node.get_python_tag('material').n(wavelength)
+            object_type=hit.node.get_python_tag('type')
+            if object_type=='reflect':    
+                reflected=self.reflect(target.normalized(), hit.normal)
+                target=reflected*max_ray_length  
+                self.trace_ray(start_pos, wavelength, hit.pos, target, 1.0, points, split)                
+            elif object_type=='refract':
+                refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
+                if not refracted.is_internal:                 
                     target=refracted.vector*max_ray_length
-                    hit=self._ray(origin, target)
-                    if hit.has_hit:
-                        if refracted.is_internal: # material->material????
-                            print('internal!')
-                            break
-                        else:
-                            ior_0=hit.node.get_python_tag('material').n(wavelength)
-                            try:
-                                ior_1=hit.next_node.get_python_tag('material').n(wavelength)
-                            except:
-                                ior_1=1.0
-                #print('hit:')
-                #print(hit)
-                if not do_reflect and not do_refract:
-                    #print('reflect, refract',do_reflect, do_refract )
-                    break
-            else:
-                points.append(hit.pos)
+                    self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
+            elif object_type=='beamsplit': 
+                if last_ior==1.0:
+                    split.append((Vec3(*target.normalized()), Vec3(*hit.normal), Point3(*hit.pos)))                
+                refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
+                if not refracted.is_internal: 
+                    target=refracted.vector*max_ray_length
+                    self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)                
         else:
-            points=[origin, target]
-        return points
-
+            points.append(hit.pos)
+            if split:
+                I, N, origin= split.pop()
+                points.append(None)
+                points.append(origin)
+                reflected=self.reflect(I, N)
+                target=reflected*max_ray_length                 
+                self.trace_ray(start_pos, wavelength, origin, target, 1.0, points, split)
+            else:
+                points.append(None)
+                #points.append(origin)
+            
     def reflect(self, I, N):
         return I - N * 2.0 * I.dot(N)
 
@@ -1145,30 +1321,32 @@ class App(DirectObject):
                 hit_node=entry.get_into_node_path().get_parent()
                 hit=entry.get_surface_point(render)
                 normal=entry.get_surface_normal(render)
+                if normal.dot(target)<0.0:
+                    normal*=-1.0
                 #if there is no id, we hit the scene barrier
                 if not hit_node.has_python_tag('id'):
                     self.ray_trav.clear_colliders()
                     if return_hit is not None:
-                        return_hit= Hit(return_hit.has_hit, return_hit.pos, return_hit.normal, return_hit.node, hit_node)
+                        return_hit= Hit(return_hit.has_hit, return_hit.pos, return_hit.normal, return_hit.node, hit_node, hit)
                         self.ray_trav.clear_colliders()
                         return return_hit
-                    return Hit(False, target, Vec3(0,0,0), None, None)
+                    return Hit(False, target, Vec3(0,0,0), None, None, Point3(0,0,0))
                 #skip false hits
                 if not hit.almost_equal(origin):
                     #print(hit_node, hit, normal)
                     #we don't have any valid hit yet
                     if return_hit is None:
-                        return_hit= Hit(True, hit, normal, hit_node, None)
+                        return_hit= Hit(True, hit, normal, hit_node, None, Point3(0,0,0))
                     elif return_hit.next_node is None: #what's the next hit node?
                         if not return_hit.pos.almost_equal(hit):
                             self.ray_trav.clear_colliders()
-                            return Hit(return_hit.has_hit, return_hit.pos, return_hit.normal, return_hit.node, hit_node)
+                            return Hit(return_hit.has_hit, return_hit.pos, return_hit.normal, return_hit.node, hit_node, hit)
 
         self.ray_trav.clear_colliders()
         if return_hit is not None:
             return return_hit
-        return Hit(False, target, Vec3(0,0,0), None)
-
+        return Hit(False, target, Vec3(0,0,0), None, None, Point3(0,0,0))
+        
     def _make_smooth_mesh(self, triangles, threshold=20.0, flip_normal=True):
         '''Creates a smooth mesh from a list of triangles'''
         egg = EggData()
@@ -1246,17 +1424,32 @@ class App(DirectObject):
                 c[3]=1.01-value
                 node.set_color(c)
 
-    def make_ray(self):
+    def make_ray(self, color=None, wavelength=None, model_name=None,
+                pos=None, hpr=None, scale=None,
+                columns=1, rows=1, column_offset=0.1, row_offset=0.1,
+                angle_y=0, angle_x=0):
         '''Creates a new ray object'''
         mesh=loader.load_model('data/cylinder.egg')
         mesh.reparent_to(self.scene)
         self.objects.append(mesh)
         id=len(self.objects)-1
-        model_name='Ray #'+str(id)
+        if model_name is None:
+            model_name='Ray #'+str(id)
+        if wavelength is None:
+            wavelength=650
         mesh.set_python_tag('id', id)
         mesh.set_python_tag('type', 'ray')
-        mesh.set_python_tag('wave', 650)
-        color=self.colors.new_color()
+        mesh.set_python_tag('wave', wavelength)
+        mesh.set_python_tag('rows', rows)        
+        mesh.set_python_tag('columns', columns)             
+        mesh.set_python_tag('column_offset',column_offset )     
+        mesh.set_python_tag('row_offset', row_offset)
+        mesh.set_python_tag('angle_x', angle_x)
+        mesh.set_python_tag('angle_y', angle_y)
+        if color is None:
+            color=self.colors.new_color()
+        else:
+            color=Vec4(*color)
         mesh.set_python_tag('line_color', color)
         self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
         mesh.set_transparency(TransparencyAttrib.M_alpha)
@@ -1283,7 +1476,15 @@ class App(DirectObject):
         mesh.set_python_tag('name', model_name)
         mesh.hide(self.camera_mask)
         line.show_through(self.camera_mask)
-        mesh.set_y(-2)
+        if pos is None:
+            mesh.set_y(-2)
+            self.select_by_id(id)
+        else:
+            mesh.set_pos(*pos)
+        if hpr is not None:              
+            mesh.set_hpr(*hpr)        
+        if scale is not None:              
+            mesh.set_scale(*scale)    
         #button
         object_type='ray'
         self.gui.button(txt='{name:<34} {type:<10} {id}'.format(name=model_name, type=object_type, id=id),
@@ -1295,14 +1496,14 @@ class App(DirectObject):
                         mono_font=True,
                         align='left',
                         cmd='app.select_by_id('+str(id)+')')
-        self.gui.sort_buttons('list_frame_canvas', 'id', False)
-        self.select_by_id(id)
+        self.gui.sort_buttons('list_frame_canvas', 'id', False)        
         self.trace_ray_in_thread(id)
         #points=self.trace_ray(id)
         #self.draw_line(id, points)
 
 
-    def load_object(self, model, select=False, object_type='refract'):
+    def load_object(self, model, select=False, object_type='refract',
+                    threshold=None, flip_normal=None):
         '''Loads a model, creates collision solids
         also adds the loaded model to self.models and creates a button on the object list
         '''
@@ -1315,22 +1516,28 @@ class App(DirectObject):
         triangles=self._get_triangles(mesh, [])
         #make a new mesh and smooth it
         if Filename(model).get_extension() not in ('bam', 'egg'):
-            threshold=self.gui['smooth_input'].get()
-            try:
-                threshold=math_eval(threshold)
-            except:
-                threshold=None
-            mesh=self._make_smooth_mesh(triangles, threshold, self.flip_model_normal)
+            if threshold is None: 
+                threshold=self.gui['smooth_input'].get()
+                try:
+                    threshold=math_eval(threshold)
+                except:
+                    threshold=None
+            if flip_normal is None:
+                flip_normal=self.flip_model_normal
+            mesh=self._make_smooth_mesh(triangles, threshold, flip_normal)
             if self.write_model_bam:
                 mesh.write_bam_file(model+'.bam')
         mesh.reparent_to(self.scene)
         self.objects.append(mesh)
         id=len(self.objects)-1
         mesh.set_python_tag('id', id)
+        mesh.set_python_tag('flip_normal', flip_normal)
+        mesh.set_python_tag('threshold', threshold)
         mesh.set_python_tag('type', object_type)
         mesh.set_python_tag('material', mat_spy.SiO2())
         mesh.set_python_tag('material_name', 'SiO2')
         mesh.set_python_tag('name', model_name)
+        mesh.set_python_tag('model_file', model)
         mesh.set_color(LColor(1.0))
         mesh.set_transparency(TransparencyAttrib.M_alpha)
         mesh.set_shader(self.lit_shader, 1)
@@ -1343,7 +1550,7 @@ class App(DirectObject):
             #c_node.node().add_solid(CollisionPolygon(*reversed(points)))
         c_node.node().set_into_collide_mask(self.obj_mask)
 
-        mesh.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_clockwise))
+        #mesh.set_attrib(CullFaceAttrib.make(CullFaceAttrib.M_cull_clockwise))
         #button
         self.gui.button(txt='{name:<34} {type:<10} {id}'.format(name=model_name, type=object_type, id=id),
                         sort_dict={'name':model_name, 'type':object_type, 'id':id},

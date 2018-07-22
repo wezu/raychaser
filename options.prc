@@ -1,4 +1,5 @@
 show-frame-rate-meter  1
+max-points 1000
 sync-video 0
 antialias_msaa 0
 win-size  1280 720

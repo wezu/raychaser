@@ -31,7 +31,7 @@ class CameraControler (DirectObject):
         self.key_map = {'rotate': False, 'forward':False, 'back':False,
                         'left':False, 'right':False, 'pan':False,
                         'up':False, 'down':False}
-        taskMgr.add(self.update, "camcon_update", -50)
+        taskMgr.add(self.update, "camcon_update")
 
         self.bind_keys()
 
@@ -123,6 +123,7 @@ class CameraControler (DirectObject):
     def update(self, task):
         dt = globalClock.getDt()
         if dt > 1.0/12.0:
+            self.last_delta=Point2(0,0)
             return task.cont
         if self.key_map['forward']:
             self.node.set_y(self.node,-self.move_speed*dt)
