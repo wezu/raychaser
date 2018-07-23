@@ -120,8 +120,8 @@
          "input":[
                     {"txt":"650","width":224, "pos":[16,34], "name":"wave_input", "cmd":"app.apply_input(txt, ['wave'])"},
                     {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,88], "name":"ray_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['column', 'column_offset'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['row', 'row_offset'])"},
+                    {"txt":"1, 0.1","width":224, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['row', 'row_offset'])"},
+                    {"txt":"1, 0.1","width":224, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['column', 'column_offset'])"},
                     {"txt":"0.0, 0.0","width":224, "pos":[16,358], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle_x', 'angle_y'])"}
                 ],
          "button":  [
@@ -189,8 +189,8 @@
         }
          ],
 "button":{
-        "button_save":{"txt":"Save", "cmd":"app.gui.show_hide('save_frame', ['list_frame','load_frame'])", "width":96, "pos":[-6,0], "parent":"top_left"},
-        "button_load":{"txt":"Load", "cmd":"app.gui.show_hide('load_frame', ['list_frame','save_frame'])", "width":96, "pos":[78,0], "parent":"top_left"},
+        "button_save":{"txt":"Save", "cmd":"app.gui.toggle('save_frame', ['list_frame','load_frame'])", "width":96, "pos":[-6,0], "parent":"top_left"},
+        "button_load":{"txt":"Load", "cmd":"app.gui.toggle('load_frame', ['list_frame','save_frame'])", "width":96, "pos":[78,0], "parent":"top_left"},
         "button_list":{"txt":"Add/Select", "cmd":"app.gui.toggle('list_frame')", "width":160, "pos":[162,0], "parent":"top_left"},
         "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[310,0], "parent":"top_left"},
         "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[460,0], "parent":"top_left"},

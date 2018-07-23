@@ -4,14 +4,14 @@
 
 ##TODO:
 ##-ray array
-##-simple projector 
+##-simple projector
 ##-freeze
 ##-stash
 ##-load .step (how!?!)
 ##-refract shader (low)
 ##-shade rays behind objects(low)
 ##-lens design
-##-default materials 
+##-default materials
 ##-opticalmaterialspy replacement without scipy, numpy
 
 import opticalmaterialspy as mat_spy
@@ -107,7 +107,7 @@ class App(DirectObject):
             self.objects=[]
             self.scene=render.attach_new_node('scene')
             self.max_points=ConfigVariableInt('max-points', 1000).get_value()
-            
+
             #cam mask
             base.cam.node().set_camera_mask(self.camera_mask)
 
@@ -141,7 +141,7 @@ class App(DirectObject):
             self._setup_select_buff()
             self.ortho_cam(True)
 
-            
+
             #collision, mouse picking setup
             self.cam_ray_trav = CollisionTraverser()
             self.cam_ray_handler = CollisionHandlerQueue()
@@ -181,6 +181,7 @@ class App(DirectObject):
             #shader setup
             self.lit_shader=Shader.load(Shader.SLGLSL, 'shaders/litsphere_v.glsl', 'shaders/litsphere_f.glsl')
             self.point_shader=Shader.load(Shader.SLGLSL, 'shaders/point_v.glsl', 'shaders/point_f.glsl')
+            self.line_shader=Shader.load(Shader.SLGLSL, 'shaders/line_v.glsl', 'shaders/line_f.glsl')
             render.set_shader_input('litex', loader.load_texture('data/lit_sphere3.png'))
             #find data to load
             self.find_models('refract')
@@ -231,7 +232,7 @@ class App(DirectObject):
             fr.show()
         except:
             pass
-            
+
     def on_resize(self):
         render.set_shader_input("screen_size", Vec2(*base.get_size()))
 
@@ -245,20 +246,20 @@ class App(DirectObject):
                 for key in node.get_python_tag_keys():
                     if key not in ('material', 'line'):
                         tags[key]=node.get_python_tag(key)
-                data['tags']=tags    
+                data['tags']=tags
                 data['pos']=node.get_pos(render)
                 data['hpr']=node.get_hpr(render)
-                data['scale']=node.get_scale(render)                
+                data['scale']=node.get_scale(render)
                 data['color']=node.get_color()
                 scene.append(data)
         #dump to json
         with open(target_file, 'w') as outfile:
             json.dump(scene, outfile, cls=CustomEncoder, indent=4)
-        
+
         self.gui.show_hide('', 'save_frame')
         self.print_txt('Scene saved to '+target_file)
         self.find_scenes('scenes')
-        
+
     def load_scene(self, file_name):
         self.clear_scene()
         if os.path.exists(file_name):
@@ -277,7 +278,7 @@ class App(DirectObject):
                                       column_offset=item['tags']['column_offset'],
                                       row_offset=item['tags']['row_offset'],
                                       angle_y=item['tags']['angle_y'],
-                                      angle_x=item['tags']['angle_x'])                         
+                                      angle_x=item['tags']['angle_x'])
                     else:
                         self.load_object(model=item['tags']['model_file'],
                                          select=False,
@@ -285,13 +286,13 @@ class App(DirectObject):
                                          threshold=item['tags']['threshold'],
                                          flip_normal=item['tags']['flip_normal'])
                         node=self.objects[-1]
-                        node.set_pos(*item['pos'])                        
-                        node.set_hpr(*item['hpr'])                        
+                        node.set_pos(*item['pos'])
+                        node.set_hpr(*item['hpr'])
                         node.set_scale(*item['scale'])
                         self.set_material(material=item['tags']['material_name'], node=node)
-                        
+
         self.gui.show_hide('', 'load_frame')
-            
+
     def set_flip_normal(self):
         '''GUI callback - sets the  flip_model_normal flag'''
         if self.flip_model_normal:
@@ -314,7 +315,7 @@ class App(DirectObject):
     def find_scenes(self, dir):
         for button_name in self.scene_buttons:
             self.gui.remove_button(button_name)
-        self.scene_buttons=[]    
+        self.scene_buttons=[]
         for fn in os.listdir(dir):
             f=Filename(fn)
             self.scene_buttons.append('button_'+fn)
@@ -376,7 +377,7 @@ class App(DirectObject):
             base.cam.node().set_lens(base.camLens)
             self.select_cam.node().set_lens(base.camLens)
             self.gui.fade_out('button_cam')
-            
+
     def set_reflect(self):
         if self.selected_id is None:
             return
@@ -389,7 +390,7 @@ class App(DirectObject):
             elif object_type=='reflect':
                 node.set_python_tag('type','absorb')
                 self.gui.fade_out('button_reflect')
-            elif object_type=='beamsplit':                    
+            elif object_type=='beamsplit':
                 node.set_python_tag('type','refract')
                 self.gui.fade_out('button_reflect')
             elif object_type=='absorb':
@@ -400,9 +401,9 @@ class App(DirectObject):
             object_type=node.get_python_tag('type')
             text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
             text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=name, type=object_type, id=id))
-            
-            self.do_raytrace()  
-            
+
+            self.do_raytrace()
+
     def set_refract(self):
         if self.selected_id is None:
             return
@@ -426,9 +427,9 @@ class App(DirectObject):
             object_type=node.get_python_tag('type')
             text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
             text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=name, type=object_type, id=id))
-            
+
             self.do_raytrace()
-            
+
     def set_object_type(self, object_type='refract'):
         '''Sets the type of the object, valid types are:
         -absorb
@@ -649,14 +650,14 @@ class App(DirectObject):
             text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=value, type=object_type, id=id))
         elif txt=='column':
             node.set_python_tag('columns', value)
-        elif txt=='row':            
+        elif txt=='row':
             node.set_python_tag('rows', value)
         elif txt=='column_offset':
             node.set_python_tag('column_offset', value)
         elif txt=='row_offset':
             node.set_python_tag('row_offset', value)
         elif txt=='angle_x':
-            node.set_python_tag('angle_x', value)        
+            node.set_python_tag('angle_x', value)
         elif txt=='angle_y':
             node.set_python_tag('angle_y', value)
         else:
@@ -667,6 +668,8 @@ class App(DirectObject):
             #points=self.trace_ray(node_id)
             #self.draw_line(node_id, points)
             self.trace_ray_in_thread(node_id)
+        else:
+            self.do_raytrace()
 
     def apply_input(self, txt, target=['x','y','z']):
         '''Convert text input into a command'''
@@ -679,10 +682,15 @@ class App(DirectObject):
                 values.append(v)
         #process the inputs
         for value, txt  in zip(values, target):
-            self._do_cmd_from_txt(txt, value)
+            try:
+                self._do_cmd_from_txt(txt, value)
+            except:
+                pass
+                #self.print_txt("Wrong data format for input: '{0}', value: '{1}'".format(*(txt, value)))
 
     def update_ui_for_node(self, node):
         '''Updates the sliders and input fields of the object properties panel '''
+        self.scale_emmiter_geom(node)
         self.gui.show_hide('prop_frame')
         self.gui['name_input'].set(node.get_python_tag('name'))
         self.gui['pos_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*node.get_pos(render)))
@@ -708,7 +716,7 @@ class App(DirectObject):
                     self.gui.fade_in('button_'+t)
                 elif t=='beamsplit':
                     self.gui.fade_in(['button_refract', 'button_reflect'])
-                
+
     def freeze_object(self):
         '''Disables mouse ray collisions for the selected object '''
         pass
@@ -1028,6 +1036,7 @@ class App(DirectObject):
         self.overlay.reparent_to(render2d)
         self.overlay.set_shader(Shader.load(Shader.SLGLSL, "shaders/select_v.glsl","shaders/select_f.glsl"),1)
         self.overlay.set_shader_input('depth_tex', self.depth_tex)
+        render.set_shader_input('depth_tex', self.depth_tex)
         self.overlay.set_shader_input('color', Vec3(0.2, 0.75, 0.45))
         self.overlay.set_shader_input('thickness', 2.0)
         self.overlay.set_transparency(TransparencyAttrib.M_alpha)
@@ -1141,6 +1150,10 @@ class App(DirectObject):
         node=self.objects[node_id]
         if node is None:
             return
+        #print('*****************')
+        #for point in points:
+        #    print(point)
+
         if color is None:
             if node.has_python_tag('line_color'):
                 color=node.get_python_tag('line_color')
@@ -1160,9 +1173,10 @@ class App(DirectObject):
             elif move_next:
                 l.move_to(point)
                 move_next=False
-            else:            
+            else:
                 l.draw_to(point)
         line=render.attach_new_node(l.create())
+        #line.set_shader(self.line_shader)
 
         #make points
         point_node=line.copy_to(render)
@@ -1176,12 +1190,12 @@ class App(DirectObject):
         line.set_transparency(TransparencyAttrib.M_binary)
         line.set_antialias(AntialiasAttrib.MLine)
         line.set_depth_test(False)
-        line.set_depth_write(False)
+        line.set_depth_write(True)
         line.set_bin('fixed', 10)
         node.set_python_tag('line', line)
         line.wrt_reparent_to(node)
         line.show_through(self.camera_mask)
-        
+
     def _update(self, task):
         '''Update task, called every frame'''
         dt = globalClock.getDt()
@@ -1189,7 +1203,7 @@ class App(DirectObject):
         if self.out_que:
             node_id, points = self.out_que.popleft()
             if points:
-                self.draw_line(node_id, points)                
+                self.draw_line(node_id, points)
         return task.again
 
     def ray_deamon(self, stop_event):
@@ -1200,7 +1214,7 @@ class App(DirectObject):
                 poped= self.in_que.popleft()
                 node=self.objects[poped]
                 node_id=poped
-                if node is None:   
+                if node is None:
                     continue
                 wavelength=node.get_python_tag('wave')
                 rows=node.get_python_tag('rows')
@@ -1210,14 +1224,17 @@ class App(DirectObject):
                 x_angle=node.get_python_tag('x_angle')
                 y_angle=node.get_python_tag('y_angle')
                 origin=node.get_pos(render)
-                new_origin=node.get_pos(render)                
                 target=node.get_quat().get_forward()*1000.0
                 points=[]
+                #origin.x-=(rows*row_offset)/2.0
+                #origin.z-=(columns*column_offset)/2.0
+                new_origin=Point3(*origin)
+                #print('*****************')
                 for row in range(rows):
-                    for column in range(columns):                        
+                    for column in range(columns):
                         new_origin.x=origin.x+row*row_offset
                         new_origin.z=origin.z+column*column_offset
-                        self.trace_ray(Point3(*new_origin), wavelength, new_origin, target, 1.0, points, [])                          
+                        self.trace_ray(Point3(*new_origin), wavelength, Point3(*new_origin), target, 1.0, points, [])
                 self.out_que.append((node_id, points))
                 sleep_time=0
             time.sleep(sleep_time)
@@ -1230,6 +1247,7 @@ class App(DirectObject):
         if points:
             if points[-1] is None:
                 points.append(start_pos)
+                #print('insert start')
         if len(points)>self.max_points:
             self.print_txt('To many points!')
             return
@@ -1249,38 +1267,49 @@ class App(DirectObject):
                 ior=1.0
             elif (hit.pos-hit.next_pos).length()<=0.5:
                 ior=hit.next_node.get_python_tag('material').n(wavelength)
-            else:    
+            else:
                 ior=hit.node.get_python_tag('material').n(wavelength)
             object_type=hit.node.get_python_tag('type')
-            if object_type=='reflect':    
+            if object_type=='reflect':
                 reflected=self.reflect(target.normalized(), hit.normal)
-                target=reflected*max_ray_length  
-                self.trace_ray(start_pos, wavelength, hit.pos, target, 1.0, points, split)                
+                target=reflected*max_ray_length
+                self.trace_ray(start_pos, wavelength, hit.pos, target, 1.0, points, split)
             elif object_type=='refract':
                 refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
-                if not refracted.is_internal:                 
+                if not refracted.is_internal:
                     target=refracted.vector*max_ray_length
                     self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
-            elif object_type=='beamsplit': 
+                else:
+                    points.append(None)
+            elif object_type=='beamsplit':
                 if last_ior==1.0:
-                    split.append((Vec3(*target.normalized()), Vec3(*hit.normal), Point3(*hit.pos)))                
+                    split.append((Vec3(*target.normalized()), Vec3(*hit.normal), Point3(*hit.pos)))
                 refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
-                if not refracted.is_internal: 
+                if not refracted.is_internal:
                     target=refracted.vector*max_ray_length
-                    self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)                
+                    self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
+                else:
+                    points.append(None)
+            else:
+                points.append(None)
         else:
+            #print(hit)
             points.append(hit.pos)
             if split:
                 I, N, origin= split.pop()
                 points.append(None)
                 points.append(origin)
                 reflected=self.reflect(I, N)
-                target=reflected*max_ray_length                 
+                target=reflected*max_ray_length
                 self.trace_ray(start_pos, wavelength, origin, target, 1.0, points, split)
             else:
-                points.append(None)
-                #points.append(origin)
-            
+                if points[-1] is None:
+                    points.append(start_pos)
+                else:
+                    points.append(None)
+                #points.append(start_pos)
+                #print('insert end')
+
     def reflect(self, I, N):
         return I - N * 2.0 * I.dot(N)
 
@@ -1346,7 +1375,7 @@ class App(DirectObject):
         if return_hit is not None:
             return return_hit
         return Hit(False, target, Vec3(0,0,0), None, None, Point3(0,0,0))
-        
+
     def _make_smooth_mesh(self, triangles, threshold=20.0, flip_normal=True):
         '''Creates a smooth mesh from a list of triangles'''
         egg = EggData()
@@ -1424,12 +1453,21 @@ class App(DirectObject):
                 c[3]=1.01-value
                 node.set_color(c)
 
+    def scale_emmiter_geom(self, node):
+        if node:
+            if node.get_python_tag('type')=='ray':
+                x=node.get_python_tag('rows')-1
+                z=node.get_python_tag('columns')-1
+                x*=node.get_python_tag('row_offset')
+                z*=node.get_python_tag('column_offset')
+                node.set_scale(max(x, 0.05), 1.0, max(z, 0.05))
+
     def make_ray(self, color=None, wavelength=None, model_name=None,
                 pos=None, hpr=None, scale=None,
                 columns=1, rows=1, column_offset=0.1, row_offset=0.1,
                 angle_y=0, angle_x=0):
         '''Creates a new ray object'''
-        mesh=loader.load_model('data/cylinder.egg')
+        mesh=loader.load_model('data/box.egg')
         mesh.reparent_to(self.scene)
         self.objects.append(mesh)
         id=len(self.objects)-1
@@ -1440,9 +1478,9 @@ class App(DirectObject):
         mesh.set_python_tag('id', id)
         mesh.set_python_tag('type', 'ray')
         mesh.set_python_tag('wave', wavelength)
-        mesh.set_python_tag('rows', rows)        
-        mesh.set_python_tag('columns', columns)             
-        mesh.set_python_tag('column_offset',column_offset )     
+        mesh.set_python_tag('rows', rows)
+        mesh.set_python_tag('columns', columns)
+        mesh.set_python_tag('column_offset',column_offset )
         mesh.set_python_tag('row_offset', row_offset)
         mesh.set_python_tag('angle_x', angle_x)
         mesh.set_python_tag('angle_y', angle_y)
@@ -1481,10 +1519,12 @@ class App(DirectObject):
             self.select_by_id(id)
         else:
             mesh.set_pos(*pos)
-        if hpr is not None:              
-            mesh.set_hpr(*hpr)        
-        if scale is not None:              
-            mesh.set_scale(*scale)    
+        if hpr is not None:
+            mesh.set_hpr(*hpr)
+        if scale is not None:
+            mesh.set_scale(*scale)
+        else:
+            self.scale_emmiter_geom(mesh)
         #button
         object_type='ray'
         self.gui.button(txt='{name:<34} {type:<10} {id}'.format(name=model_name, type=object_type, id=id),
@@ -1496,7 +1536,7 @@ class App(DirectObject):
                         mono_font=True,
                         align='left',
                         cmd='app.select_by_id('+str(id)+')')
-        self.gui.sort_buttons('list_frame_canvas', 'id', False)        
+        self.gui.sort_buttons('list_frame_canvas', 'id', False)
         self.trace_ray_in_thread(id)
         #points=self.trace_ray(id)
         #self.draw_line(id, points)
@@ -1516,7 +1556,7 @@ class App(DirectObject):
         triangles=self._get_triangles(mesh, [])
         #make a new mesh and smooth it
         if Filename(model).get_extension() not in ('bam', 'egg'):
-            if threshold is None: 
+            if threshold is None:
                 threshold=self.gui['smooth_input'].get()
                 try:
                     threshold=math_eval(threshold)
