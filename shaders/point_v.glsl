@@ -11,5 +11,5 @@ in vec4 p3d_Vertex;
 void main()
     {
     gl_Position = p3d_ModelViewProjectionMatrix * p3d_Vertex;
-    gl_PointSize = (screen_size.y/distance(p3d_Vertex.xyz, camera_pos))*0.09;
+    gl_PointSize = max(4.0, min((screen_size.y/distance(p3d_Vertex.xyz, camera_pos))*0.06, 8.0));
     }

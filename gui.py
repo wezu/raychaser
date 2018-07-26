@@ -187,8 +187,10 @@ class UI(DirectObject):
         self.slider_cache={}
         self.current_focus=None
         self.resize_callback=[]
+        self.last_click_time=0.0
 
         self.accept( 'window-event', self.on_window_event)
+        self.accept('enter', self.on_enter_pressed)
 
     def __getitem__(self, item):
         return self.elements[item]
@@ -638,6 +640,7 @@ class UI(DirectObject):
         #root.set_pos(_pos2d(12, 2))
         root['focusInExtraArgs']=[root]
         root['extraArgs']=[root, cmd]
+        root.set_python_tag('cmd', cmd)
         root.bind(DGG.B1PRESS, self.on_cursor_set, [root])
         root.flatten_light()
         root.set_pos(_pos2d(*pos))
@@ -716,16 +719,6 @@ class UI(DirectObject):
                     name=str(name)+'_button_text')
         t.node().set_text_color(Vec4(*txt_fg))
         root.set_python_tag('text', t)
-        if hidden:
-            root.hide()
-        sort_dict['node']=root #cyclic reference warrning!
-        root.set_python_tag('sort_dict', sort_dict)
-        if name is not None:
-            self.elements[name]=root
-        return root
-
-
-
         if hidden:
             root.hide()
         sort_dict['node']=root #cyclic reference warrning!
@@ -862,10 +855,22 @@ class UI(DirectObject):
     ###         Events          #
     #############################
     def on_cursor_set(self, entry, event=None):
-        m_pos=event.get_mouse()
-        entry_pos=entry.get_relative_point(render2d, Vec3(m_pos.x, 0, m_pos.y))#pos in widget space
-        x=(entry_pos.x-10)//7 # -offset from the left //character width
-        entry.setCursorPosition(int(x))
+        time=globalClock.get_frame_time()
+        if (time-self.last_click_time) >0.33:
+            m_pos=event.get_mouse()
+            entry_pos=entry.get_relative_point(render2d, Vec3(m_pos.x, 0, m_pos.y))#pos in widget space
+            x=(entry_pos.x-10)//7 # -offset from the left //character width
+            entry.setCursorPosition(int(x))
+        else:
+            entry.set('')
+        self.last_click_time=time
+
+    def on_enter_pressed(self):
+        if self.current_focus:
+            text=self.current_focus.get()
+            widget=self.current_focus
+            cmd=widget.get_python_tag('cmd')
+            self.on_submit(text, widget, cmd)
 
     def on_submit(self, text, widget, cmd):
         if cmd:
@@ -876,6 +881,9 @@ class UI(DirectObject):
         self.current_focus=None
 
     def on_focus(self, widget):
+        if self.current_focus:
+            if self.current_focus != widget:
+                self.on_enter_pressed()
         self.current_focus=widget
 
     def on_slide(self, slider, cmd, event=None):

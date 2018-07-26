@@ -24,8 +24,8 @@
          "autoresize":1,
          "button":  [
                     {"txt":"Delete","cmd":"app.delete_object()", "width":96, "pos":[0,224]},
-                    {"txt":"Freeze","cmd":"app.freeze_object()", "width":96, "pos":[80,224]},
-                    {"txt":"Stash","cmd":"app.freeze_object()", "width":96, "pos":[160,224]}
+                    {"txt":"Freeze","cmd":"app.freeze_object()", "width":96, "pos":[80,224], "name":"freeze_button"},
+                    {"txt":"Stash","cmd":"app.freeze_object()", "width":96, "pos":[160,224], "name":"stash_button"}
                     ],
 
          "text":[
@@ -33,9 +33,15 @@
                 ],
          "input":[
                     {"txt":"Foobar",           "width":224, "pos":[16,28], "name":"name_input", "cmd":"app.apply_input(txt, ['name'])"},
-                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,82], "name":"pos_input", "cmd":"app.apply_input(txt, ['x','y','z'])"},
-                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,136], "name":"hpr_input", "cmd":"app.apply_input(txt, ['h','p','r'])"},
-                    {"txt":"0.00, 0.00, 0.00", "width":224, "pos":[16,190], "name":"scale_input", "cmd":"app.apply_input(txt, ['sx','sy','sz'])"}
+                    {"txt":"0.00", "width":96, "pos":[0,82], "name":"x_pos_input", "cmd":"app.apply_input(txt, ['x'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,82], "name":"y_pos_input", "cmd":"app.apply_input(txt, ['y'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,82], "name":"z_pos_input", "cmd":"app.apply_input(txt, ['z'])"},
+                    {"txt":"0.00", "width":96, "pos":[0,136], "name":"h_input", "cmd":"app.apply_input(txt, ['h'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,136], "name":"p_input", "cmd":"app.apply_input(txt, ['p'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,136], "name":"r_input", "cmd":"app.apply_input(txt, ['r'])"},
+                    {"txt":"0.00", "width":96, "pos":[0,190], "name":"sx_input", "cmd":"app.apply_input(txt, ['sx'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,190], "name":"sy_input", "cmd":"app.apply_input(txt, ['sy'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,190], "name":"sz_input", "cmd":"app.apply_input(txt, ['sz'])"}
                 ],
          "widget":[
                   {"cmd":"app.gui.show_hide('', 'prop_frame')", "pos":[216, 4], "geom_name":"close_icon"}
@@ -115,14 +121,16 @@
          "scroll":0,
          "autoresize":1,
          "text":[
-                {"txt":"    Wavelength(nm):\n\n\n      Color(rgb):\n\n\n\n\n\n\n    Number of rays:\n     Rows, Offset:\n\n\n   Columns, Offset:\n\n\n         Angle:\n(horizontal, vertical)", "align":"left", "pos":[16,8], "big_font":0}
+                {"txt":"    Wavelength(nm):\n\n\n      Color(rgb):\n\n\n\n\n\n\n    Number of rays:\n     Rows, Offset:\n\n\n   Columns, Offset:\n\n\n Field of View(angle):", "align":"left", "pos":[16,8], "big_font":0}
                 ],
          "input":[
                     {"txt":"650","width":224, "pos":[16,34], "name":"wave_input", "cmd":"app.apply_input(txt, ['wave'])"},
                     {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,88], "name":"ray_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['row', 'row_offset'])"},
-                    {"txt":"1, 0.1","width":224, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['column', 'column_offset'])"},
-                    {"txt":"0.0, 0.0","width":224, "pos":[16,358], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle_x', 'angle_y'])"}
+                    {"txt":"1","width":96, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['row'])"},
+                    {"txt":"0.1","width":96, "pos":[128,232], "name":"row_off_input", "cmd":"app.apply_input(txt, ['row_offset'])"},
+                    {"txt":"1","width":96, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['column'])"},
+                    {"txt":"0.1","width":96, "pos":[128,286], "name":"column_off_input", "cmd":"app.apply_input(txt, ['column_offset'])"},
+                    {"txt":"0.0","width":224, "pos":[16,338], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"}
                 ],
          "button":  [
                     {"txt":"Wavelength to Color","cmd":"app.wavelength_to_color()", "width":224, "pos":[16,122]},

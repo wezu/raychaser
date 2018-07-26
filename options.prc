@@ -1,7 +1,7 @@
 show-frame-rate-meter  1
 max-points 1000
 sync-video 0
-antialias_msaa 0
+antialias_msaa 2
 win-size  1280 720
 camera-speed 1.0
 camera-zoom-speed 1.0

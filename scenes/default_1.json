@@ -2,11 +2,52 @@
     {
         "tags": {
             "id": 0,
+            "type": "ray",
+            "wave": 650,
+            "rows": 5,
+            "columns": 5,
+            "column_offset": 0.5,
+            "row_offset": 0.5,
+            "angle": 0,
+            "line_color": [
+                0.9900000095367432,
+                0.8600000143051147,
+                0.6700000166893005,
+                1.0
+            ],
+            "name": "Ray #0"
+        },
+        "pos": [
+            0.0,
+            -2.0,
+            0.0
+        ],
+        "hpr": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            2.0,
+            1.0,
+            2.0
+        ],
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    {
+        "tags": {
+            "id": 1,
             "flip_normal": null,
             "threshold": null,
-            "type": "beamsplit",
+            "type": "refract",
             "material_name": "SiO2",
             "name": "smiley",
+            "gloss":0.5,
             "model_file": "models/refract/smiley.egg"
         },
         "pos": [
@@ -28,48 +69,7 @@
             1.0,
             1.0,
             1.0,
-            1.0
-        ]
-    },
-    {
-        "tags": {
-            "id": 1,
-            "type": "ray",
-            "wave": 650,
-            "rows": 5,
-            "columns": 5,
-            "column_offset": 0.1,
-            "row_offset": 0.1,
-            "angle_x": 0,
-            "angle_y": 0,
-            "line_color": [
-                0.5699999928474426,
-                0.699999988079071,
-                0.49000000953674316,
-                1.0
-            ],
-            "name": "Ray #1"
-        },
-        "pos": [
-            -0.05673897638916969,
-            -2.0,
-            0.0
-        ],
-        "hpr": [
-            0.0,
-            0.0,
-            0.0
-        ],
-        "scale": [
-            0.4000000059604645,
-            1.0,
-            0.4000000059604645
-        ],
-        "color": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            0.7900000214576721
         ]
     }
 ]

@@ -3,9 +3,7 @@
 #pip install panda3d
 
 ##TODO:
-##-ray array
 ##-simple projector
-##-freeze
 ##-stash
 ##-load .step (how!?!)
 ##-refract shader (low)
@@ -44,6 +42,12 @@ import time
 import shutil
 import random
 from math import sqrt
+from math import tan
+from math import cos
+from math import acos
+from math import sin
+from math import acosh
+from math import radians
 from collections import namedtuple
 from collections import deque
 import threading
@@ -158,7 +162,7 @@ class App(DirectObject):
             #picker_np.node().set_from_collide_mask(GeomNode.getDefaultCollideMask())
             self.mouse_ray = CollisionRay()
             picker_np.node().add_solid(self.mouse_ray)
-            picker_np.node().set_from_collide_mask(self.obj_mask)
+            picker_np.node().set_from_collide_mask(BitMask32.bit(1))
             picker_np.node().set_into_collide_mask(0)
             self.cam_ray_trav.add_collider(picker_np, self.cam_ray_handler)
 
@@ -203,7 +207,7 @@ class App(DirectObject):
             self.in_que=deque()
             self.out_que=deque()
             self.deamon_stop_event= threading.Event()
-            self.deamon = threading.Thread(name='daemon', target=self.ray_deamon, args=(self.deamon_stop_event,))
+            self.deamon = threading.Thread(name='daemon', target=self.ray_daemon, args=(self.deamon_stop_event,))
             self.deamon.setDaemon(True)
             self.deamon.start()
 
@@ -250,7 +254,8 @@ class App(DirectObject):
                 data['pos']=node.get_pos(render)
                 data['hpr']=node.get_hpr(render)
                 data['scale']=node.get_scale(render)
-                data['color']=node.get_color()
+                if node.has_color():
+                    data['color']=node.get_color()
                 scene.append(data)
         #dump to json
         with open(target_file, 'w') as outfile:
@@ -277,8 +282,8 @@ class App(DirectObject):
                                       rows=item['tags']['rows'],
                                       column_offset=item['tags']['column_offset'],
                                       row_offset=item['tags']['row_offset'],
-                                      angle_y=item['tags']['angle_y'],
-                                      angle_x=item['tags']['angle_x'])
+                                      angle=item['tags']['angle']
+                                      )
                     else:
                         self.load_object(model=item['tags']['model_file'],
                                          select=False,
@@ -289,7 +294,10 @@ class App(DirectObject):
                         node.set_pos(*item['pos'])
                         node.set_hpr(*item['hpr'])
                         node.set_scale(*item['scale'])
+                        node.set_color(*item['color'], 1)
+                        node.set_shader_input('gloss', item['tags']['gloss'])
                         self.set_material(material=item['tags']['material_name'], node=node)
+
 
         self.gui.show_hide('', 'load_frame')
 
@@ -527,15 +535,15 @@ class App(DirectObject):
     def make_grid(self, scale=10.0):
         '''Creates a 10x10 grid of given size'''
         l=LineSegs()
-        l.set_color(Vec4(0.1, 0.38, 0.23, 1.0))
-        l.set_thickness(2.0)
+        l.set_color(Vec4(0.1, 0.38, 0.23, 0.7))
+        l.set_thickness(4.0)
         for i in range(0,11):
             l.move_to(Vec3(0,i,0))
             l.draw_to(Vec3(10, i, 0))
             l.move_to(Vec3(i,0,0))
             l.draw_to(Vec3(i, 10, 0))
         self.grid=render.attach_new_node(l.create())
-        self.grid.set_transparency(TransparencyAttrib.M_binary)
+        self.grid.set_transparency(TransparencyAttrib.M_multisample)
         self.grid.set_antialias(AntialiasAttrib.MLine)
         #self.grid.set_depth_test(False)
         #self.grid.set_depth_write(False)
@@ -649,19 +657,15 @@ class App(DirectObject):
             text_node=self.gui['button_object_'+str(id)].get_python_tag('text')
             text_node.node().set_text('{name:<34} {type:<10} {id}'.format(name=value, type=object_type, id=id))
         elif txt=='column':
-            node.set_python_tag('columns', value)
+            node.set_python_tag('columns', int(value))
         elif txt=='row':
-            node.set_python_tag('rows', value)
+            node.set_python_tag('rows', int(value))
         elif txt=='column_offset':
             node.set_python_tag('column_offset', value)
         elif txt=='row_offset':
             node.set_python_tag('row_offset', value)
-        elif txt=='angle_x':
-            node.set_python_tag('angle_x', value)
-        elif txt=='angle_y':
-            node.set_python_tag('angle_y', value)
-        else:
-            return
+        elif txt=='angle':
+            node.set_python_tag('angle', value)
         self.update_ui_for_node(node)
         if node.get_python_tag('type')=='ray':
             node_id=node.get_python_tag('id')
@@ -673,6 +677,11 @@ class App(DirectObject):
 
     def apply_input(self, txt, target=['x','y','z']):
         '''Convert text input into a command'''
+        if not txt:
+            if self.selected_id is None:
+                return
+            node=self.objects[self.selected_id]
+            self.update_ui_for_node(node)
         values=[]
         #normalize input
         for v in txt.replace(',', ' ').split():
@@ -693,15 +702,35 @@ class App(DirectObject):
         self.scale_emmiter_geom(node)
         self.gui.show_hide('prop_frame')
         self.gui['name_input'].set(node.get_python_tag('name'))
-        self.gui['pos_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*node.get_pos(render)))
-        self.gui['hpr_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*node.get_hpr(render)))
-        self.gui['scale_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*node.get_scale(render)))
+        self.gui['x_pos_input'].set('{0:.2f}'.format(*node.get_pos(render)))
+        self.gui['y_pos_input'].set('{1:.2f}'.format(*node.get_pos(render)))
+        self.gui['z_pos_input'].set('{2:.2f}'.format(*node.get_pos(render)))
+        self.gui['h_input'].set('{0:.2f}'.format(*node.get_hpr(render)))
+        self.gui['p_input'].set('{1:.2f}'.format(*node.get_hpr(render)))
+        self.gui['r_input'].set('{2:.2f}'.format(*node.get_hpr(render)))
+        self.gui['sx_input'].set('{0:.2f}'.format(*node.get_scale(render)))
+        self.gui['sy_input'].set('{1:.2f}'.format(*node.get_scale(render)))
+        self.gui['sz_input'].set('{2:.2f}'.format(*node.get_scale(render)))
+
+        cnode=node.find('+CollisionNode')
+        mask=cnode.node().get_into_collide_mask()
+        if mask.get_bit(1):
+            self.gui.fade_out('freeze_button')
+        else:
+            self.gui.fade_in('freeze_button')
+
 
         if node.has_python_tag('type'):
             t=node.get_python_tag('type')
             if t=='ray':
                 self.gui.show_hide('ray_prop_frame', 'mesh_prop_frame')
                 self.gui['wave_input'].set(str(node.get_python_tag('wave')))
+                self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*node.get_python_tag('line_color')))
+                self.gui['row_input'].set(str(node.get_python_tag('rows')))
+                self.gui['row_off_input'].set('{0:.2f}'.format(node.get_python_tag('row_offset')))
+                self.gui['column_input'].set(str(node.get_python_tag('columns')))
+                self.gui['column_off_input'].set('{0:.2f}'.format(node.get_python_tag('column_offset')))
+                self.gui['angle_input'].set(str(node.get_python_tag('angle')))
             else:
                 self.gui.show_hide('mesh_prop_frame', 'ray_prop_frame')
                 mat_name=node.get_python_tag('material_name')
@@ -719,7 +748,21 @@ class App(DirectObject):
 
     def freeze_object(self):
         '''Disables mouse ray collisions for the selected object '''
-        pass
+        if self.selected_id is None:
+            return
+        node=self.objects[self.selected_id]
+        if node:
+            cnode=node.find('+CollisionNode')
+            mask=cnode.node().get_into_collide_mask()
+            if mask.get_bit(1):
+                mask.clear_bit(1)
+                self.gui.fade_in('freeze_button')
+                self.set_select_mode()
+            else:
+                mask.set_bit(1)
+                self.gui.fade_out('freeze_button')
+            cnode.node().set_into_collide_mask(mask)
+
 
     def select_by_id(self, id):
         '''Select  an  object  based on  ID'''
@@ -1185,16 +1228,21 @@ class App(DirectObject):
         shader_attrib = shader_attrib.setFlag(ShaderAttrib.F_shader_point_size, True)
         point_node.set_attrib(shader_attrib)
         point_node.wrt_reparent_to(line)
+        point_node.set_depth_test(False)
+        point_node.set_depth_write(True)
+        point_node.set_bin('fixed', 10)
+
 
         line.set_color(color, 1)
-        line.set_transparency(TransparencyAttrib.M_binary)
+        line.set_transparency(TransparencyAttrib.M_multisample)
         line.set_antialias(AntialiasAttrib.MLine)
-        line.set_depth_test(False)
-        line.set_depth_write(True)
-        line.set_bin('fixed', 10)
+        #line.set_depth_test(False)
+        #line.set_depth_write(True)
+        #line.set_bin('fixed', 10)
         node.set_python_tag('line', line)
         line.wrt_reparent_to(node)
         line.show_through(self.camera_mask)
+        line.hide(self.select_mask)
 
     def _update(self, task):
         '''Update task, called every frame'''
@@ -1206,8 +1254,8 @@ class App(DirectObject):
                 self.draw_line(node_id, points)
         return task.again
 
-    def ray_deamon(self, stop_event):
-        '''Deamon function, executes the ray tracing in a separate thread '''
+    def ray_daemon(self, stop_event):
+        '''Daemon function, executes the ray tracing in a separate thread '''
         while not stop_event.is_set():
             sleep_time=0.16666 #~1.0/60.0
             if self.in_que:
@@ -1221,21 +1269,26 @@ class App(DirectObject):
                 columns=node.get_python_tag('columns')
                 row_offset=node.get_python_tag('row_offset')
                 column_offset=node.get_python_tag('column_offset')
-                x_angle=node.get_python_tag('x_angle')
-                y_angle=node.get_python_tag('y_angle')
-                origin=node.get_pos(render)
-                target=node.get_quat().get_forward()*1000.0
+                angle=node.get_python_tag('angle')
                 points=[]
-                #origin.x-=(rows*row_offset)/2.0
-                #origin.z-=(columns*column_offset)/2.0
-                new_origin=Point3(*origin)
-                #print('*****************')
+                scale=node.get_scale()
                 for row in range(rows):
                     for column in range(columns):
-                        new_origin.x=origin.x+row*row_offset
-                        new_origin.z=origin.z+column*column_offset
-                        self.trace_ray(Point3(*new_origin), wavelength, Point3(*new_origin), target, 1.0, points, [])
+                        local_origin=Point3(row*row_offset/scale.x, 0, column*column_offset/scale.z)
+                        origin=render.get_relative_point(node, local_origin)
+                        if angle % 90.0 == 0.0:
+                            target=node.get_quat().get_forward()*1000.0
+                        else:
+                            local_center=Point3((rows-1)*row_offset/scale.x/2.0,
+                                        1.0/tan(radians(-angle)),
+                                      (columns-1)*column_offset/scale.z/2.0)
+                            center=render.get_relative_point(node, local_center)
+                            target=(origin-center).normalized()*1000.0
+                            if angle <0.0:
+                                target*=-1.0
+                        self.trace_ray(origin, wavelength, origin, target, 1.0, points, [])
                 self.out_que.append((node_id, points))
+                #lens_node.remove_node()
                 sleep_time=0
             time.sleep(sleep_time)
 
@@ -1276,20 +1329,20 @@ class App(DirectObject):
                 self.trace_ray(start_pos, wavelength, hit.pos, target, 1.0, points, split)
             elif object_type=='refract':
                 refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
-                if not refracted.is_internal:
-                    target=refracted.vector*max_ray_length
-                    self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
-                else:
-                    points.append(None)
+                #if not refracted.is_internal:
+                target=refracted.vector*max_ray_length
+                self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
+                #else:
+                #    points.append(None)
             elif object_type=='beamsplit':
                 if last_ior==1.0:
                     split.append((Vec3(*target.normalized()), Vec3(*hit.normal), Point3(*hit.pos)))
                 refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
-                if not refracted.is_internal:
-                    target=refracted.vector*max_ray_length
-                    self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
-                else:
-                    points.append(None)
+                #if not refracted.is_internal:
+                target=refracted.vector*max_ray_length
+                self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
+                #else:
+                #    points.append(None)
             else:
                 points.append(None)
         else:
@@ -1327,9 +1380,9 @@ class App(DirectObject):
         eta = etai / etat;
         k = 1.0 - eta * eta * (1.0 - cosi * cosi);
         if k < 0:
-            return Traced(True, self.reflect(I, N))
+            return Traced(True, self.reflect(I, n))
         else:
-            return  Traced(False, I * eta  + n * (eta * cosi - sqrt(k)))
+            return  Traced(True, I * eta  + n * (eta * cosi - sqrt(k)))
 
 
     def _ray(self, origin, target):
@@ -1350,8 +1403,9 @@ class App(DirectObject):
                 hit_node=entry.get_into_node_path().get_parent()
                 hit=entry.get_surface_point(render)
                 normal=entry.get_surface_normal(render)
-                if normal.dot(target)<0.0:
+                if normal.dot(target)>0.0:
                     normal*=-1.0
+                    normal.normalize()
                 #if there is no id, we hit the scene barrier
                 if not hit_node.has_python_tag('id'):
                     self.ray_trav.clear_colliders()
@@ -1465,7 +1519,7 @@ class App(DirectObject):
     def make_ray(self, color=None, wavelength=None, model_name=None,
                 pos=None, hpr=None, scale=None,
                 columns=1, rows=1, column_offset=0.1, row_offset=0.1,
-                angle_y=0, angle_x=0):
+                angle=0):
         '''Creates a new ray object'''
         mesh=loader.load_model('data/box.egg')
         mesh.reparent_to(self.scene)
@@ -1482,8 +1536,7 @@ class App(DirectObject):
         mesh.set_python_tag('columns', columns)
         mesh.set_python_tag('column_offset',column_offset )
         mesh.set_python_tag('row_offset', row_offset)
-        mesh.set_python_tag('angle_x', angle_x)
-        mesh.set_python_tag('angle_y', angle_y)
+        mesh.set_python_tag('angle', angle)
         if color is None:
             color=self.colors.new_color()
         else:
@@ -1578,6 +1631,7 @@ class App(DirectObject):
         mesh.set_python_tag('material_name', 'SiO2')
         mesh.set_python_tag('name', model_name)
         mesh.set_python_tag('model_file', model)
+        mesh.set_python_tag('gloss', 0.0)
         mesh.set_color(LColor(1.0))
         mesh.set_transparency(TransparencyAttrib.M_alpha)
         mesh.set_shader(self.lit_shader, 1)
