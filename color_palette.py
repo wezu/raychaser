@@ -2,6 +2,7 @@ from panda3d.core import *
 import random
 
 class ColorPalette:
+    '''This class is used to create unique, visually distinctive colors'''
     def __init__(self, pastel=0.5):
         self.pastel=pastel
         self.colors=[Vec4(0,0,0,1),
@@ -14,6 +15,8 @@ class ColorPalette:
         return Vec4(*[round((x+self.pastel)/(1.0+self.pastel), 2) for x in [random.uniform(0.1, 1.0) for i in [1,2,3]]], 1.0)
 
     def new_color(self, old_color=None):
+        '''Returns a new, unique color, 
+        if used to replace a existing color pass in that color as old_color'''
         if old_color is not None:
             if old_color in self.colors:
                 del self.colors[self.colors.index(old_color)]

@@ -1,5 +1,6 @@
 import json
 class CustomEncoder(json.JSONEncoder):
+    '''A JSONEncoder that encodes all iterable objects into lists'''
     def default(self, o):
         try:
             iterable = iter(o)

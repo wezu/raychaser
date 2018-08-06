@@ -1,22 +1,6 @@
-{"frame":[
-         {"name":"save_frame",
-         "size":[448, 192],
-         "pos":[0,32],
-         "parent":"top_left",
-         "header":64,
-         "scroll":0,
-         "text":[
-                {"txt":"Save Scene", "pos":[0,8]},
-                {"txt":"File path:", "pos":[0,70], "big_font":0}
-                ],
-         "input":[{"txt":"scenes/default_1.json", "width":416, "pos":[16,96], "name":"save_path_input"}],
-         "button":  [
-                    {"txt":"Cancel","cmd":"app.gui.show_hide('', 'save_frame')", "width":128, "pos":[64,150]},
-                    {"txt":"Save","cmd":"app.save_scene()", "width":128, "pos":[256,150]}
-                    ]
-        },
+{"frame":[         
         {"name":"prop_frame",
-         "size":[256, "win_y"],
+         "size":[256, "win_y-64"],
          "pos":[-256,0],
          "parent":"top_right",
          "header":0,
@@ -24,8 +8,8 @@
          "autoresize":1,
          "button":  [
                     {"txt":"Delete","cmd":"app.delete_object()", "width":96, "pos":[0,224]},
-                    {"txt":"Freeze","cmd":"app.freeze_object()", "width":96, "pos":[80,224], "name":"freeze_button"},
-                    {"txt":"Stash","cmd":"app.freeze_object()", "width":96, "pos":[160,224], "name":"stash_button"}
+                    {"txt":"Frozen","cmd":"app.freeze_object()", "width":96, "pos":[80,224], "name":"freeze_button"},
+                    {"txt":"Stashed","cmd":"app.stash_object()", "width":96, "pos":[160,224], "name":"stash_button"}
                     ],
 
          "text":[
@@ -48,7 +32,7 @@
                 ]
         },
         {"name":"mesh_prop_frame",
-         "size":[256, "win_y-256"],
+         "size":[256, "win_y-320"],
          "pos":[0,256],
          "parent":"prop_frame",
          "header":0,
@@ -72,9 +56,56 @@
                     {"value":0.0,"cmd":"app.set_alpha(value)", "width":224, "pos":[16,246], "name":"alpha_slider"},
                     {"value":0.0,"cmd":"app.set_gloss(value)", "width":224, "pos":[16,300], "name":"gloss_slider"}
                 ]
+        },        
+        {"name":"ray_prop_frame",
+         "size":[256, "win_y-320"],
+         "pos":[0, 256],
+         "parent":"prop_frame",
+         "header":0,
+         "scroll":0,
+         "autoresize":1,
+         "text":[
+                {"txt":"    Wavelength(nm):\n\n\n      Color(rgb):\n\n\n\n\n\n\n     Rows, Offset:\n\n\n   Columns, Offset:\n\n\n         Angle:\n Horizontal, Vertical", "align":"left", "pos":[16,8], "big_font":0}
+                ],
+         "input":[
+                    {"txt":"650","width":224, "pos":[16,34], "name":"wave_input", "cmd":"app.apply_input(txt, ['wave'])"},
+                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,88], "name":"ray_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"},
+                    {"txt":"1","width":96, "pos":[32,208], "name":"row_input", "cmd":"app.apply_input(txt, ['row'])"},
+                    {"txt":"0.1","width":96, "pos":[128,208], "name":"row_off_input", "cmd":"app.apply_input(txt, ['row_offset'])"},
+                    {"txt":"1","width":96, "pos":[32,262], "name":"column_input", "cmd":"app.apply_input(txt, ['column'])"},
+                    {"txt":"0.1","width":96, "pos":[128,262], "name":"column_off_input", "cmd":"app.apply_input(txt, ['column_offset'])"},
+                    {"txt":"0.0","width":96, "pos":[32,334], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"},
+                    {"txt":"0.0","width":96, "pos":[128,334], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"}
+                ],
+         "button":  [
+                    {"txt":"Wavelength to Color","cmd":"app.wavelength_to_color()", "width":224, "pos":[16,122]},
+                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,156]}
+                    ]
+        },
+        {"name":"projector_prop_frame",
+         "size":[256, "win_y-320"],
+         "pos":[0, 256],
+         "parent":"prop_frame",
+         "header":0,
+         "scroll":0,
+         "autoresize":1,
+         "text":[
+                {"txt":"Width, Height:\n\n\nAngle:\nHorizontal, Vertical\n\n\nImage:\n\n\nRay color:", "pos":[0,8], "big_font":0}
+                ],
+         "input":[
+                    {"txt":"0.0","width":96, "pos":[32,34], "name":"proj_width_input", "cmd":"app.apply_input(txt, ['proj_w'])"},
+                    {"txt":"0.0","width":96, "pos":[128,34], "name":"proj_height_input", "cmd":"app.apply_input(txt, ['proj_h'])"},                    
+                    {"txt":"0.0","width":96, "pos":[32,100], "name":"proj_angle_h_input", "cmd":"app.apply_input(txt, ['angle_h'])"},
+                    {"txt":"0.0","width":96, "pos":[128,100], "name":"proj_angle_v_input", "cmd":"app.apply_input(txt, ['angle_v'])"},
+                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,210], "name":"proj_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"}                    
+                ],
+         "button":  [
+                    {"txt":"Set Image...","cmd":"app.do_nill()", "width":224, "pos":[16,158]},
+                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,244]}                    
+                    ]
         },
         {"name":"mat_list_frame",
-         "size":[256, "win_y"],
+         "size":[256, "win_y-64"],
          "pos":[-256,0],
          "parent":"prop_frame",
          "header":0,
@@ -113,42 +144,23 @@
                         {"txt": "Chal. Ge10As10Se80", "cmd": "app.set_material('Chalcogen. Ge10As10Se80')", "width": 238, "pos": [3, 816], "parent": "mat_list_frame_canvas"}
                     ]
         },
-        {"name":"ray_prop_frame",
-         "size":[256, "win_y-256"],
-         "pos":[0, 256],
-         "parent":"prop_frame",
-         "header":0,
-         "scroll":0,
-         "autoresize":1,
-         "text":[
-                {"txt":"    Wavelength(nm):\n\n\n      Color(rgb):\n\n\n\n\n\n\n    Number of rays:\n     Rows, Offset:\n\n\n   Columns, Offset:\n\n\n Field of View(angle):", "align":"left", "pos":[16,8], "big_font":0}
-                ],
-         "input":[
-                    {"txt":"650","width":224, "pos":[16,34], "name":"wave_input", "cmd":"app.apply_input(txt, ['wave'])"},
-                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,88], "name":"ray_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"},
-                    {"txt":"1","width":96, "pos":[16,232], "name":"row_input", "cmd":"app.apply_input(txt, ['row'])"},
-                    {"txt":"0.1","width":96, "pos":[128,232], "name":"row_off_input", "cmd":"app.apply_input(txt, ['row_offset'])"},
-                    {"txt":"1","width":96, "pos":[16,286], "name":"column_input", "cmd":"app.apply_input(txt, ['column'])"},
-                    {"txt":"0.1","width":96, "pos":[128,286], "name":"column_off_input", "cmd":"app.apply_input(txt, ['column_offset'])"},
-                    {"txt":"0.0","width":224, "pos":[16,338], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"}
-                ],
-         "button":  [
-                    {"txt":"Wavelength to Color","cmd":"app.wavelength_to_color()", "width":224, "pos":[16,122]},
-                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,156]}
-                    ]
-        },
         {"name":"load_frame",
          "size":[448, "win_y-64"],
          "pos":[0,32],
          "parent":"top_left",
-         "header":64,
+         "header":128,
          "scroll":1024,
          "autoresize":1,
-         "text":[
-                {"txt":"Load Scene", "pos":[0,8]}
+         "text":[           
+                {"txt":"Save scene as...", "pos":[0,12], "big_font":0},                
+                {"txt":"Load scene:", "pos":[0,142], "big_font":0}
                 ],
+         "input":[{"txt":"scenes/default_1.json", "width":416, "pos":[16,42], "name":"save_path_input"}],                
+         "widget":[
+                  {"cmd":"app.gui.show_hide('', 'load_frame')", "pos":[406, 8], "geom_name":"close_icon"}
+                  ],
          "button":  [
-                    {"txt":"Cancel","cmd":"app.gui.show_hide('', 'load_frame')", "width":128, "pos":[160,70]}
+                    {"txt":"Save","cmd":"app.save_scene()", "width":128, "pos":[160,76]}                    
                     ]
         },
         {"name":"model_frame",
@@ -182,27 +194,32 @@
          "scroll":1024,
          "autoresize":1,
          "text":[
-                {"txt":"Add or Select Object", "pos":[0,8]}
+                {"txt":"Select Object", "pos":[0,8]}
                 ],
          "button":[
                     {"txt":"Name","cmd":"app.gui.sort_buttons('list_frame_canvas', 'name')", "width":256, "pos":[16,80], "style":"_tick"},
                     {"txt":"Type","cmd":"app.gui.sort_buttons('list_frame_canvas', 'type')", "width":64, "pos":[272,80], "style":"_tick"},
-                    {"txt":"ID","cmd":"app.gui.sort_buttons('list_frame_canvas', 'id')", "width":64, "pos":[336,80], "style":"_tick"},
-                    {"txt":" + Add new ray...", "cmd":"app.make_ray()", "width":384, "pos":[16,0], "sort_dict":{"name":" add_ray", "type":"cmd", "id":-2}, "parent":"list_frame_canvas", "mono_font":1, "align":"left"},
-                    {"txt":" + Add new mesh...", "cmd":"app.gui.show_hide('model_frame', 'list_frame')", "width":384, "pos":[16,34], "sort_dict":{"name":" add_mesh", "type":"cmd", "id":-1}, "parent":"list_frame_canvas", "mono_font":1, "align":"left"}
-                  ],
+                    {"txt":"ID","cmd":"app.gui.sort_buttons('list_frame_canvas', 'id')", "width":64, "pos":[336,80], "style":"_tick"}
+                    ],
          "widget":[
                   {"cmd":"app.gui.show_hide('', 'list_frame')", "pos":[406, 8], "geom_name":"close_icon"}
                 ]
         }
          ],
 "button":{
-        "button_save":{"txt":"Save", "cmd":"app.gui.toggle('save_frame', ['list_frame','load_frame'])", "width":96, "pos":[-6,0], "parent":"top_left"},
-        "button_load":{"txt":"Load", "cmd":"app.gui.toggle('load_frame', ['list_frame','save_frame'])", "width":96, "pos":[78,0], "parent":"top_left"},
-        "button_list":{"txt":"Add/Select", "cmd":"app.gui.toggle('list_frame')", "width":160, "pos":[162,0], "parent":"top_left"},
-        "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[310,0], "parent":"top_left"},
-        "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[460,0], "parent":"top_left"},
+        "button_save":{"txt":"Save/Load", "cmd":"app.gui.toggle('load_frame', ['list_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":160, "pos":[-6,0], "parent":"top_left"},
+        "button_create":{"txt":"Create", "cmd":"app.gui.toggle(['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'],['load_frame', 'list_frame'])", "width":96, "pos":[142,0], "parent":"top_left"},
+        "button_list":{"txt":"Select", "cmd":"app.gui.toggle('list_frame', ['load_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":96, "pos":[226,0], "parent":"top_left"},
+        
+        "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[-296,-32], "parent":"bottom_right"},
+        "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[-148,-32], "parent":"bottom_right"},
 
+        "button_create_ray":{"txt":"Ray", "cmd":"app.make_ray()", "width":96, "pos":[142,32], "parent":"top_left"},
+        "button_create_solid":{"txt":"Import...", "cmd":"app.gui.show_hide('model_frame', ['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":128, "pos":[142,64], "parent":"top_left"},
+        "button_create_lens":{"txt":"Lens", "cmd":"app.do_nill()", "width":96, "pos":[142,96], "parent":"top_left", "txt_fg":[0.55, 0.55, 0.55, 1.0]},
+        "button_create_proj":{"txt":"Projector", "cmd":"app.make_projector()", "width":128, "pos":[142,128], "parent":"top_left"},
+        
+        
         "button_move":{"txt":"Move", "cmd":"app.set_move_mode()", "width":96, "pos":[-6,-32], "parent":"bottom_left"},
         "button_rotate":{"txt":"Rotate", "cmd":"app.set_rotate_mode()", "width":96, "pos":[78,-32], "parent":"bottom_left"},
         "button_scale":{"txt":"Scale", "cmd":"app.set_scale_mode()", "width":96, "pos":[162,-32], "parent":"bottom_left"},

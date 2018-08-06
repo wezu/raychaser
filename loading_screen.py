@@ -4,6 +4,7 @@ from direct.gui.OnscreenImage import OnscreenImage
 
 @contextmanager
 def loading(*args):
+    '''A context manager that shows a loading screen'''
     x=base.win.get_x_size()//2
     y=base.win.get_y_size()//2
     img=loader.load_texture('gui/loading.png')
