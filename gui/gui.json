@@ -1,4 +1,4 @@
-{"frame":[         
+{"frame":[
         {"name":"prop_frame",
          "size":[256, "win_y-64"],
          "pos":[-256,0],
@@ -56,7 +56,7 @@
                     {"value":0.0,"cmd":"app.set_alpha(value)", "width":224, "pos":[16,246], "name":"alpha_slider"},
                     {"value":0.0,"cmd":"app.set_gloss(value)", "width":224, "pos":[16,300], "name":"gloss_slider"}
                 ]
-        },        
+        },
         {"name":"ray_prop_frame",
          "size":[256, "win_y-320"],
          "pos":[0, 256],
@@ -74,8 +74,8 @@
                     {"txt":"0.1","width":96, "pos":[128,208], "name":"row_off_input", "cmd":"app.apply_input(txt, ['row_offset'])"},
                     {"txt":"1","width":96, "pos":[32,262], "name":"column_input", "cmd":"app.apply_input(txt, ['column'])"},
                     {"txt":"0.1","width":96, "pos":[128,262], "name":"column_off_input", "cmd":"app.apply_input(txt, ['column_offset'])"},
-                    {"txt":"0.0","width":96, "pos":[32,334], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"},
-                    {"txt":"0.0","width":96, "pos":[128,334], "name":"angle_input", "cmd":"app.apply_input(txt, ['angle'])"}
+                    {"txt":"0.0","width":96, "pos":[32,334], "name":"angle_h_input", "cmd":"app.apply_input(txt, ['angle_h'])"},
+                    {"txt":"0.0","width":96, "pos":[128,334], "name":"angle_v_input", "cmd":"app.apply_input(txt, ['angle_v'])"}
                 ],
          "button":  [
                     {"txt":"Wavelength to Color","cmd":"app.wavelength_to_color()", "width":224, "pos":[16,122]},
@@ -94,14 +94,14 @@
                 ],
          "input":[
                     {"txt":"0.0","width":96, "pos":[32,34], "name":"proj_width_input", "cmd":"app.apply_input(txt, ['proj_w'])"},
-                    {"txt":"0.0","width":96, "pos":[128,34], "name":"proj_height_input", "cmd":"app.apply_input(txt, ['proj_h'])"},                    
+                    {"txt":"0.0","width":96, "pos":[128,34], "name":"proj_height_input", "cmd":"app.apply_input(txt, ['proj_h'])"},
                     {"txt":"0.0","width":96, "pos":[32,100], "name":"proj_angle_h_input", "cmd":"app.apply_input(txt, ['angle_h'])"},
                     {"txt":"0.0","width":96, "pos":[128,100], "name":"proj_angle_v_input", "cmd":"app.apply_input(txt, ['angle_v'])"},
-                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,210], "name":"proj_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"}                    
+                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,210], "name":"proj_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"}
                 ],
          "button":  [
                     {"txt":"Set Image...","cmd":"app.do_nill()", "width":224, "pos":[16,158]},
-                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,244]}                    
+                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,244]}
                     ]
         },
         {"name":"mat_list_frame",
@@ -151,16 +151,16 @@
          "header":128,
          "scroll":1024,
          "autoresize":1,
-         "text":[           
-                {"txt":"Save scene as...", "pos":[0,12], "big_font":0},                
+         "text":[
+                {"txt":"Save scene as...", "pos":[0,12], "big_font":0},
                 {"txt":"Load scene:", "pos":[0,142], "big_font":0}
                 ],
-         "input":[{"txt":"scenes/default_1.json", "width":416, "pos":[16,42], "name":"save_path_input"}],                
+         "input":[{"txt":"scenes/default_1.json", "width":416, "pos":[16,42], "name":"save_path_input"}],
          "widget":[
                   {"cmd":"app.gui.show_hide('', 'load_frame')", "pos":[406, 8], "geom_name":"close_icon"}
                   ],
          "button":  [
-                    {"txt":"Save","cmd":"app.save_scene()", "width":128, "pos":[160,76]}                    
+                    {"txt":"Save","cmd":"app.save_scene()", "width":128, "pos":[160,76]}
                     ]
         },
         {"name":"model_frame",
@@ -210,7 +210,7 @@
         "button_save":{"txt":"Save/Load", "cmd":"app.gui.toggle('load_frame', ['list_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":160, "pos":[-6,0], "parent":"top_left"},
         "button_create":{"txt":"Create", "cmd":"app.gui.toggle(['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'],['load_frame', 'list_frame'])", "width":96, "pos":[142,0], "parent":"top_left"},
         "button_list":{"txt":"Select", "cmd":"app.gui.toggle('list_frame', ['load_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":96, "pos":[226,0], "parent":"top_left"},
-        
+
         "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[-296,-32], "parent":"bottom_right"},
         "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[-148,-32], "parent":"bottom_right"},
 
@@ -218,8 +218,8 @@
         "button_create_solid":{"txt":"Import...", "cmd":"app.gui.show_hide('model_frame', ['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":128, "pos":[142,64], "parent":"top_left"},
         "button_create_lens":{"txt":"Lens", "cmd":"app.do_nill()", "width":96, "pos":[142,96], "parent":"top_left", "txt_fg":[0.55, 0.55, 0.55, 1.0]},
         "button_create_proj":{"txt":"Projector", "cmd":"app.make_projector()", "width":128, "pos":[142,128], "parent":"top_left"},
-        
-        
+
+
         "button_move":{"txt":"Move", "cmd":"app.set_move_mode()", "width":96, "pos":[-6,-32], "parent":"bottom_left"},
         "button_rotate":{"txt":"Rotate", "cmd":"app.set_rotate_mode()", "width":96, "pos":[78,-32], "parent":"bottom_left"},
         "button_scale":{"txt":"Scale", "cmd":"app.set_scale_mode()", "width":96, "pos":[162,-32], "parent":"bottom_left"},

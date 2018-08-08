@@ -51,7 +51,6 @@ if sys.version_info >= (3, 0):
     import builtins
 else:
     import __builtin__ as builtins
-
 from camera import CameraControler
 from loading_screen import loading
 from gui import UI
@@ -74,6 +73,7 @@ class App(DirectObject):
     def __init__(self):
         builtins.app=self
         #basic stuff
+        sys.setrecursionlimit(10000)
         self.base = ShowBase.ShowBase()
         self.base.disableMouse()
         self.base.set_background_color(0.1, 0.1, 0.1)
@@ -271,7 +271,16 @@ class App(DirectObject):
                                       rows=item['tags']['rows'],
                                       column_offset=item['tags']['column_offset'],
                                       row_offset=item['tags']['row_offset'],
-                                      angle=item['tags']['angle']
+                                      angle_h=item['tags']['angle_h'],
+                                      angle_v=item['tags']['angle_v']
+                                      )
+                    elif item['tags']['type']=='projector':
+                        self.make_projector(color=item['tags']['line_color'],
+                                      pos=item['pos'],
+                                      hpr=item['hpr'],
+                                      scale=item['scale'],
+                                      angle_h=item['tags']['angle_h'],
+                                      angle_v=item['tags']['angle_v']
                                       )
                     else:
                         self.load_object(model=item['tags']['model_file'],
@@ -549,6 +558,7 @@ class App(DirectObject):
             self.axis.find('x').hide()
             self.axis.find('y').hide()
             self.axis.find('z').hide()
+            self.do_raytrace()
 
     def center_camera(self, object_id=None):
         '''move  the camera to the object, sort of...  '''
@@ -624,13 +634,13 @@ class App(DirectObject):
             node.set_python_tag('column_offset', value)
         elif txt=='row_offset':
             node.set_python_tag('row_offset', value)
-        elif txt=='angle':
-            node.set_python_tag('angle', value)
+        elif txt=='angle_h':
+            node.set_python_tag('angle_h', min(89.9, max(-89.9, value)))
+        elif txt=='angle_v':
+            node.set_python_tag('angle_v', min(89.9, max(-89.9, value)))
         self.update_ui_for_node(node)
-        if node.get_python_tag('type')=='ray':
+        if node.get_python_tag('type') in ('ray', 'projector'):
             node_id=node.get_python_tag('id')
-            #points=self.trace_ray(node_id)
-            #self.draw_line(node_id, points)
             self.trace_ray_in_thread(node_id)
         else:
             self.do_raytrace()
@@ -672,7 +682,6 @@ class App(DirectObject):
         self.gui['sy_input'].set('{1:.2f}'.format(*node.get_scale(render)))
         self.gui['sz_input'].set('{2:.2f}'.format(*node.get_scale(render)))
 
-
         if node.has_python_tag('stashed'):
             self.gui.fade_in('stash_button')
         else:
@@ -692,9 +701,12 @@ class App(DirectObject):
                 self.gui['row_off_input'].set('{0:.2f}'.format(node.get_python_tag('row_offset')))
                 self.gui['column_input'].set(str(node.get_python_tag('columns')))
                 self.gui['column_off_input'].set('{0:.2f}'.format(node.get_python_tag('column_offset')))
-                self.gui['angle_input'].set(str(node.get_python_tag('angle')))
+                self.gui['angle_h_input'].set('{0:.2f}'.format(node.get_python_tag('angle_h')))
+                self.gui['angle_v_input'].set('{0:.2f}'.format(node.get_python_tag('angle_v')))
             elif t=='projector':
                 self.gui.show_hide('projector_prop_frame',['mesh_prop_frame', 'ray_prop_frame'])
+                self.gui['proj_angle_h_input'].set('{0:.2f}'.format(node.get_python_tag('angle_h')))
+                self.gui['proj_angle_v_input'].set('{0:.2f}'.format(node.get_python_tag('angle_v')))
             else:
                 self.gui.show_hide('mesh_prop_frame', ['ray_prop_frame','projector_prop_frame'])
                 mat_name=node.get_python_tag('material_name')
@@ -1162,7 +1174,7 @@ class App(DirectObject):
         self.out_que.clear()
         for node in self.objects:
             if node:
-                if node.get_python_tag('type')=='ray':
+                if node.get_python_tag('type') in ('ray', 'projector'):
                     node_id=node.get_python_tag('id')
                     self.trace_ray_in_thread(node_id)
 
@@ -1190,6 +1202,32 @@ class App(DirectObject):
                 line=node.get_python_tag('line')
                 line.set_color(color, 1)
                 self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
+
+    def draw_projection(self, node_id, points):
+        node=self.objects[node_id]
+        if node is None:
+            return
+        final_points=[]
+        for n, point in enumerate(points):
+            if point is None and n>0:
+                final_points.append(points[n-1])
+
+        if node.has_python_tag('quad'):
+            node.get_python_tag('quad').remove_node()
+
+        if len(final_points)>3:
+            cm = CardMaker("quad")
+            cm.set_frame(final_points[0],final_points[2], final_points[3], final_points[1])
+            quad= NodePath(cm.generate())
+            quad.wrt_reparent_to(node)
+            quad.set_two_sided(True)
+            quad.set_depth_test(False)
+            quad.set_depth_write(True)
+            quad.set_bin('fixed', 10)
+            quad.set_depth_offset(1)
+            quad.show_through(self.camera_mask)
+            quad.set_texture(loader.load_texture('images/test1.png'), 1)
+            node.set_python_tag('quad', quad)
 
     def draw_line(self, node_id, points, color=None):
         '''Draw lines for node_id '''
@@ -1248,9 +1286,31 @@ class App(DirectObject):
         render.set_shader_input("camera_pos", base.cam.get_pos(render))
         if self.out_que:
             node_id, points = self.out_que.popleft()
-            if points:
+            node=self.objects[node_id]
+            if node and points:
                 self.draw_line(node_id, points)
+                if node.get_python_tag('type')=='projector':
+                    self.draw_projection(node_id, points)
         return task.again
+
+    def _get_ray_vector(self, h, p):
+        q=Quat()
+        q.set_hpr((h, 0.0, 0.0))  # quaternion describing heading only
+        v=q.get_forward()
+        q_p=Quat()  # quaternion describing pitch only
+        q_p.set_hpr((0.0, p, 0.0))
+        v_p=q_p.get_forward()  # "pitch vector", needed for edge-case checking
+        q *= q_p  # multiply the quaternions in the correct order
+        v2=q.get_forward()
+        # check edge cases
+        if abs(v2.y) < .001:
+            v.x = 0.0 if abs(v_p.y) < .001 else v2.x
+            v.y = 0.0
+        elif abs(v.y) > .001:
+            v2 *= v.y/v2.y  # make the Y-components of both vectors equal
+        v.z = v2.z
+        v.normalize()
+        return v
 
     def ray_daemon(self, stop_event):
         '''Daemon function, executes the ray tracing in a separate thread '''
@@ -1262,14 +1322,21 @@ class App(DirectObject):
                 node_id=poped
                 if node is None:
                     continue
-                wavelength=node.get_python_tag('wave')
-                rows=node.get_python_tag('rows')
-                columns=node.get_python_tag('columns')
-                row_offset=node.get_python_tag('row_offset')
-                column_offset=node.get_python_tag('column_offset')
-                column_angle=node.get_python_tag('angle')
-                row_angle=node.get_python_tag('angle')
+                column_angle=node.get_python_tag('angle_v')
+                row_angle=node.get_python_tag('angle_h')
                 scale=node.get_scale()
+                if node.get_python_tag('type')=='ray':
+                    wavelength=node.get_python_tag('wave')
+                    rows=node.get_python_tag('rows')
+                    columns=node.get_python_tag('columns')
+                    row_offset=node.get_python_tag('row_offset')
+                    column_offset=node.get_python_tag('column_offset')
+                elif node.get_python_tag('type')=='projector':
+                    wavelength=550
+                    rows=2
+                    columns=2
+                    row_offset=1
+                    column_offset=1
                 points=[]
                 q=Quat()
                 for row in range(rows):
@@ -1286,26 +1353,11 @@ class App(DirectObject):
                             p = -1.0*(column_angle-column_angle*column/(columns-1)*2.0)
                         else:
                             p= column_angle
-                        q.set_hpr((h, 0.0, 0.0))  # quaternion describing heading only
-                        v=q.get_forward()
-                        q_p=Quat()  # quaternion describing pitch only
-                        q_p.set_hpr((0.0, p, 0.0))
-                        v_p=q_p.get_forward()  # "pitch vector", needed for edge-case checking
-                        q *= q_p  # multiply the quaternions in the correct order
-                        v2=q.get_forward()
-                        # check edge cases
-                        if abs(v2.y) < .001:
-                            v.x = 0.0 if abs(v_p.y) < .001 else v2.x
-                            v.y = 0.0
-                        elif abs(v.y) > .001:
-                            v2 *= v.y/v2.y  # make the Y-components of both vectors equal
-                        v.z = v2.z
-                        v.normalize()
-                        v*=1000.0 #target a point 100.0 units away
+                        v=self._get_ray_vector(h, p)
+                        v*=1000.0 #target a point 1000.0 units away
                         target=render.get_relative_vector(node, v)+origin
                         self.trace_ray(origin, wavelength, origin, target, 1.0, points, [])
                 self.out_que.append((node_id, points))
-                #lens_node.remove_node()
                 sleep_time=0
             time.sleep(sleep_time)
 
@@ -1587,12 +1639,12 @@ class App(DirectObject):
                         align='left',
                         cmd='app.select_by_id('+str(id)+')')
         self.gui.sort_buttons('list_frame_canvas', 'id', False)
-        #self.trace_ray_in_thread(id)
+        self.trace_ray_in_thread(id)
 
     def make_ray(self, color=None, wavelength=None, model_name=None,
                 pos=None, hpr=None, scale=None,
-                columns=1, rows=1, column_offset=0.1, row_offset=0.1,
-                angle=0):
+                columns=2, rows=2, column_offset=0.1, row_offset=0.1,
+                angle_h=0, angle_v=0):
         '''Creates a new ray object'''
         mesh=loader.load_model('data/box.egg')
         mesh.reparent_to(self.scene)
@@ -1609,7 +1661,8 @@ class App(DirectObject):
         mesh.set_python_tag('columns', columns)
         mesh.set_python_tag('column_offset',column_offset )
         mesh.set_python_tag('row_offset', row_offset)
-        mesh.set_python_tag('angle', angle)
+        mesh.set_python_tag('angle_h', angle_h)
+        mesh.set_python_tag('angle_v', angle_v)
         if color is None:
             color=self.colors.new_color()
         else:
@@ -1715,6 +1768,7 @@ class App(DirectObject):
         self.gui.show_hide('', 'model_frame')
         if select:
             self.select_by_id(id)
+            self.do_raytrace()
         return mesh
 
 
