@@ -379,6 +379,18 @@ class UI(DirectObject):
             button.clear_python_tag('sort_dict')
             button.destroy()
 
+    def set_button_txt(self, name, txt):
+        if name not in self.elements:
+            return
+        button=self.elements[name]
+        if button.has_python_tag('text'):
+                t=button.get_python_tag('text')
+                t.node().set_text(txt)
+                
+    def scroll(self, name, value):
+        scroll_bar=self.elements[name+"_verticalScroll"]
+        scroll_bar['value']=1.0-value
+    
     def fade_out(self, names):
         if isinstance(names, (str, bytes)):
             names=[names]

@@ -24,6 +24,12 @@ class Material:
             return value[0]
         return 1.0
         
+class CustomIOR:
+    def __init__(self, ior):
+        self.ior=ior
+    def n(self, wavelength=None):
+        return self.ior
+        
 class Ktp(Material):
     pass
         

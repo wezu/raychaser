@@ -100,10 +100,26 @@
                     {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,210], "name":"proj_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"}
                 ],
          "button":  [
-                    {"txt":"Set Image...","cmd":"app.do_nill()", "width":224, "pos":[16,158]},
+                    {"name":"button_proj_img","txt":"Set Image...","cmd":"app.gui.show_hide('file_list_frame')", "width":224, "pos":[16,158]},
                     {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,244]}
                     ]
         },
+        {"name":"file_list_frame",
+         "size":[448, "win_y-64"],
+         "pos":[-448,0],
+         "parent":"prop_frame",
+         "header":0,
+         "scroll":1024,
+         "autoresize":1,
+          "text":[
+                {"txt":"path", "pos":[0,18], "big_font":0,"mono_font":1, "name":"img_path_txt"}
+                ],
+         "widget":[
+                  {"cmd":"app.gui.show_hide('', 'file_list_frame')", "pos":[8, 8], "geom_name":"close_icon"}
+                ],
+         "button":  [
+                    ]
+         },
         {"name":"mat_list_frame",
          "size":[256, "win_y-64"],
          "pos":[-256,0],
@@ -112,36 +128,40 @@
          "scroll":256,
          "autoresize":1,
          "text":[
-                {"txt":"Materials", "pos":[0,0]}
+                {"txt":"Material", "pos":[0,0]}
                 ],
+         "input":[
+                    {"txt":"1.0","width":96, "pos":[120,0], "name":"mat_ior_input", "parent":"button_custom_ior"}
+                 ],
          "widget":[
                   {"cmd":"app.gui.show_hide('', 'mat_list_frame')", "pos":[8, 8], "geom_name":"close_icon"}
                 ],
          "button":  [
-                        {"txt": "Ktp X-axis", "cmd": "app.set_material('Ktp x')", "width": 224, "pos": [3, 34], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Ktp Y-axis", "cmd": "app.set_material('Ktp y')", "width": 224, "pos": [3, 68], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Ktp Z-axis", "cmd": "app.set_material('Ktp z')", "width": 224, "pos": [3, 102], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Ln E-axis", "cmd": "app.set_material('Ln e')", "width": 224, "pos": [3, 136], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Ln O-axis", "cmd": "app.set_material('Ln o')", "width": 224, "pos": [3, 170], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Tfln E-axis", "cmd": "app.set_material('Tfln e')", "width": 224, "pos": [3, 204], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Tfln O-axis", "cmd": "app.set_material('Tfln o')", "width": 224, "pos": [3, 238], "parent": "mat_list_frame_canvas"},
-                        {"txt": "LnMg E-axis", "cmd": "app.set_material('LnMg e')", "width": 224, "pos": [3, 272], "parent": "mat_list_frame_canvas"},
-                        {"txt": "LnMg O-axis", "cmd": "app.set_material('LnMg o')", "width": 224, "pos": [3,306], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Bbo E-axis", "cmd": "app.set_material('Bbo e')", "width": 224, "pos": [3, 340], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Bbo O-axis", "cmd": "app.set_material('Bbo o')", "width": 224, "pos": [3, 374], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Bibo X-axis", "cmd": "app.set_material('Bibo x')", "width": 224, "pos": [3, 408], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Bibo Y-axis", "cmd": "app.set_material('Biboy')", "width": 224, "pos": [3, 442], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Bibo Z-axis", "cmd": "app.set_material('Bibo z')", "width": 224, "pos": [3, 476], "parent": "mat_list_frame_canvas"},
-                        {"txt": "SiO2", "cmd": "app.set_material('SiO2')", "width": 224, "pos": [3, 510], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Su8", "cmd": "app.set_material('Su8')", "width": 224, "pos": [3, 544], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Al2O3 E-axis", "cmd": "app.set_material('Al2O3 e')", "width": 224, "pos": [3, 578], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Al2O3 O-axis", "cmd": "app.set_material('Al2O3 o')", "width": 224, "pos": [3, 612], "parent": "mat_list_frame_canvas"},
-                        {"txt": "TiO2 E-axis", "cmd": "app.set_material('TiO2 e')", "width": 224, "pos": [3, 646], "parent": "mat_list_frame_canvas"},
-                        {"txt": "TiO2 O-axis", "cmd": "app.set_material('TiO2 o')", "width": 224, "pos": [3, 680], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Chalcogenide As2S3", "cmd": "app.set_material('Chalcogenide As2S3')", "width": 238, "pos": [3, 714], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Chalcogenide As2Se3", "cmd": "app.set_material('Chalcogenide As2Se3')", "width": 238, "pos": [3, 748], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Chalcogenide GeSe4", "cmd": "app.set_material('Chalcogenide GeSe4')", "width": 238, "pos": [3, 782 ], "parent": "mat_list_frame_canvas"},
-                        {"txt": "Chal. Ge10As10Se80", "cmd": "app.set_material('Chalcogen. Ge10As10Se80')", "width": 238, "pos": [3, 816], "parent": "mat_list_frame_canvas"}
+                     {"name":"button_custom_ior", "txt": "Custom IOR:", "cmd": "app.set_material('Custom IOR:')", "width": 128, "pos": [3, 32], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Ktp X-axis", "cmd": "app.set_material('Ktp x')", "width": 224, "pos": [3, 64], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Ktp Y-axis", "cmd": "app.set_material('Ktp y')", "width": 224, "pos": [3, 96], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Ktp Z-axis", "cmd": "app.set_material('Ktp z')", "width": 224, "pos": [3, 128], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Ln E-axis", "cmd": "app.set_material('Ln e')", "width": 224, "pos": [3, 160], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Ln O-axis", "cmd": "app.set_material('Ln o')", "width": 224, "pos": [3, 192], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Tfln E-axis", "cmd": "app.set_material('Tfln e')", "width": 224, "pos": [3, 224], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Tfln O-axis", "cmd": "app.set_material('Tfln o')", "width": 224, "pos": [3, 256], "parent": "mat_list_frame_canvas"},
+                     {"txt": "LnMg E-axis", "cmd": "app.set_material('LnMg e')", "width": 224, "pos": [3, 288], "parent": "mat_list_frame_canvas"},
+                     {"txt": "LnMg O-axis", "cmd": "app.set_material('LnMg o')", "width": 224, "pos": [3, 320], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Bbo E-axis", "cmd": "app.set_material('Bbo e')", "width": 224, "pos": [3, 352], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Bbo O-axis", "cmd": "app.set_material('Bbo o')", "width": 224, "pos": [3, 384], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Bibo X-axis", "cmd": "app.set_material('Bibo x')", "width": 224, "pos": [3, 416], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Bibo Y-axis", "cmd": "app.set_material('Biboy')", "width": 224, "pos": [3, 448], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Bibo Z-axis", "cmd": "app.set_material('Bibo z')", "width": 224, "pos": [3, 480], "parent": "mat_list_frame_canvas"},
+                     {"txt": "SiO2", "cmd": "app.set_material('SiO2')", "width": 224, "pos": [3, 512], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Su8", "cmd": "app.set_material('Su8')", "width": 224, "pos": [3, 544], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Al2O3 E-axis", "cmd": "app.set_material('Al2O3 e')", "width": 224, "pos": [3, 576], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Al2O3 O-axis", "cmd": "app.set_material('Al2O3 o')", "width": 224, "pos": [3, 608], "parent": "mat_list_frame_canvas"},
+                     {"txt": "TiO2 E-axis", "cmd": "app.set_material('TiO2 e')", "width": 224, "pos": [3, 640], "parent": "mat_list_frame_canvas"},
+                     {"txt": "TiO2 O-axis", "cmd": "app.set_material('TiO2 o')", "width": 224, "pos": [3, 672], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Chalcogenide As2S3", "cmd": "app.set_material('Chalcogenide As2S3')", "width": 238, "pos": [3, 704], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Chalcogenide As2Se3", "cmd": "app.set_material('Chalcogenide As2Se3')", "width": 238, "pos": [3, 736], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Chalcogenide GeSe4", "cmd": "app.set_material('Chalcogenide GeSe4')", "width": 238, "pos": [3, 768], "parent": "mat_list_frame_canvas"},
+                     {"txt": "Chal. Ge10As10Se80", "cmd": "app.set_material('Chalcogen. Ge10As10Se80')", "width": 238, "pos": [3, 800], "parent": "mat_list_frame_canvas"}
                     ]
         },
         {"name":"load_frame",
@@ -210,14 +230,15 @@
         "button_save":{"txt":"Save/Load", "cmd":"app.gui.toggle('load_frame', ['list_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":160, "pos":[-6,0], "parent":"top_left"},
         "button_create":{"txt":"Create", "cmd":"app.gui.toggle(['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'],['load_frame', 'list_frame'])", "width":96, "pos":[142,0], "parent":"top_left"},
         "button_list":{"txt":"Select", "cmd":"app.gui.toggle('list_frame', ['load_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":96, "pos":[226,0], "parent":"top_left"},
+        "button_help":{"txt":"Help", "cmd":"app.show_help()", "width":96, "pos":[310,0], "parent":"top_left"},
 
+        "button_cam_reset":{"txt":"Reset Camera", "cmd":"app.reset_cam()", "width":160, "pos":[-444,-32], "parent":"bottom_right"},
         "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[-296,-32], "parent":"bottom_right"},
         "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[-148,-32], "parent":"bottom_right"},
 
         "button_create_ray":{"txt":"Ray", "cmd":"app.make_ray()", "width":96, "pos":[142,32], "parent":"top_left"},
-        "button_create_solid":{"txt":"Import...", "cmd":"app.gui.show_hide('model_frame', ['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":128, "pos":[142,64], "parent":"top_left"},
-        "button_create_lens":{"txt":"Lens", "cmd":"app.do_nill()", "width":96, "pos":[142,96], "parent":"top_left", "txt_fg":[0.55, 0.55, 0.55, 1.0]},
-        "button_create_proj":{"txt":"Projector", "cmd":"app.make_projector()", "width":128, "pos":[142,128], "parent":"top_left"},
+        "button_create_proj":{"txt":"Projector", "cmd":"app.make_projector()", "width":128, "pos":[142,64], "parent":"top_left"},
+        "button_create_solid":{"txt":"Import...", "cmd":"app.gui.show_hide('model_frame', ['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":128, "pos":[142,96], "parent":"top_left"},
 
 
         "button_move":{"txt":"Move", "cmd":"app.set_move_mode()", "width":96, "pos":[-6,-32], "parent":"bottom_left"},

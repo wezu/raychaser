@@ -4,12 +4,9 @@
 #or download from panda3d.org
 
 ##TODO:
-##-fix mouse transform directions ?
-##-angles!
-##-simple projector
-##-load .step (how!?!)
-##-lens design
-##-default materials
+##-per pixel projector
+##-projector width/height
+##-emitter pivot
 #try:
 #    import opticalmaterialspy as mat_spy
 #except:
@@ -97,7 +94,9 @@ class App(DirectObject):
             self.selected_id=None
             self.flip_model_normal=False
             self.write_model_bam=False
+            self.last_vec=None
             self.scene_buttons=[]
+            self.img_buttons=[]
             self.mode='select'
             self.global_coords=True
             self.active_axis=['x','y','z']
@@ -111,8 +110,8 @@ class App(DirectObject):
             #ui
             self.gui=UI()
             self.gui.load_from_file('gui/gui.json')
-            self.gui.show_hide(['button_save', 'button_create', 'button_list',
-                                'button_grid','button_cam','input_grid',
+            self.gui.show_hide(['button_save', 'button_create', 'button_list','button_help',
+                                'button_grid','button_cam_reset','button_cam','input_grid',
                                 'button_move','button_rotate','button_scale'])
 
             self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
@@ -171,6 +170,15 @@ class App(DirectObject):
             self.axis.find('x').hide()
             self.axis.find('y').hide()
             self.axis.find('z').hide()
+            #visual aid
+            self.circle=self.make_circle()
+            self.circle.hide()
+            self.circle.set_light_off()
+            self.circle.set_depth_test(False)
+            self.circle.set_bin('fixed', 100)
+            #mouse plane
+            self.plane = Plane(Vec3(0, 0, 1), Point3(0, 0, 1))
+            self.last_axis_pos=None
             #grid setup
             self.make_grid()
             #shader setup
@@ -184,6 +192,7 @@ class App(DirectObject):
             self.find_models('beamsplit')
             self.find_models('absorb')
             self.find_scenes('scenes')
+            self.find_images('images')
             #mouse keys
             self.accept('mouse1', self._on_click)
             self.accept('mouse1-up', self._unlock_mouse)
@@ -202,7 +211,8 @@ class App(DirectObject):
             self.deamon.setDaemon(True)
             self.deamon.start()
             # Task
-            taskMgr.add(self._lock_mouse_task, 'mouse_lock_tsk')
+            #taskMgr.add(self._lock_mouse_task, 'mouse_lock_tsk')
+            taskMgr.add(self._mouse_manipulate_task, 'mouse_tsk')
             taskMgr.add(self._update, 'update_tsk')
 
         self.splash=self.gui.img('gui/splash.png', 'left', (0,-384))
@@ -225,6 +235,15 @@ class App(DirectObject):
             fr.show()
         except:
             pass
+
+    def show_help(self):
+        pass
+
+    def reset_cam(self):
+        '''Reset the camera pos and hpr'''
+        self.cam_driver.reset()
+        self.cam_driver.node.set_h(45)
+        self.cam_driver.gimbal.set_p(45)
 
     def on_resize(self):
         render.set_shader_input("screen_size", Vec2(*base.get_size()))
@@ -317,6 +336,59 @@ class App(DirectObject):
         else:
             self.write_model_bam=True
             self.gui.fade_in('button_bam')
+
+    def load_image(self, path):
+        if self.selected_id is not None:
+            node=self.objects[self.selected_id]
+            node.set_python_tag('texture', path)
+            self.gui.show_hide('', 'file_list_frame')
+            img_name='{0:.16}'.format(Filename(path).getBasenameWoExtension())
+            self.gui.set_button_txt('button_proj_img', img_name)
+            node_id=node.get_python_tag('id')
+            self.trace_ray_in_thread(self.selected_id)
+
+    def find_images(self, dir):
+        dir=str(Filename(dir).to_os_specific())
+        self.gui['img_path_txt'].set_text('{:.50}'.format(dir))
+        for button_name in self.img_buttons:
+            self.gui.remove_button(button_name)
+        self.gui.scroll('file_list_frame', 0)
+        self.img_buttons=[]
+        self.img_buttons.append('button_img_0')
+        up_dir=str(Filename().from_os_specific(os.path.dirname(os.path.abspath(dir))))
+        self.gui.button(txt='...',
+                           mono_font=True,
+                           align='left',
+                           cmd="app.find_images('"+up_dir+"')",
+                           width=384,
+                           pos=(16,0),
+                           name='button_img_0',
+                           parent='file_list_frame_canvas')
+        i=0
+        for fn in os.listdir(dir):
+            f=Filename(fn)
+            if os.path.isdir(os.path.join(dir,fn)):
+                i+=1
+                self.img_buttons.append('button_img_'+str(i))
+                self.gui.button(txt='<DIR>{name:.45}'.format(name=f.getBasename()),
+                                   mono_font=True,
+                                   align='left',
+                                   cmd="app.find_images('"+dir+'/'+fn+"')",
+                                   width=384,
+                                   pos=(16,i*32),
+                                   name='button_img_'+str(i),
+                                   parent='file_list_frame_canvas')
+            elif f.get_extension() in ('png', 'jpg', 'jpeg', 'dds', 'bmp', 'tga'):
+                i+=1
+                self.img_buttons.append('button_img_'+str(i))
+                self.gui.button(txt='{name:.45}'.format(name=f.getBasename()),
+                                   mono_font=True,
+                                   align='left',
+                                   cmd="app.load_image('"+str(Filename().from_os_specific(dir))+'/'+fn+"')",
+                                   width=384,
+                                   pos=(16,i*32),
+                                   name='button_img_'+str(i),
+                                   parent='file_list_frame_canvas')
 
     def find_scenes(self, dir):
         for button_name in self.scene_buttons:
@@ -493,6 +565,12 @@ class App(DirectObject):
             m=mat_spy.TiO2('e')
         elif material=='TiO2 o':
             m=mat_spy.TiO2('o')
+        elif material.startswith('Custom IOR:'):
+            material, ior= material.split(':')
+            if not ior:
+                ior=self.gui['mat_ior_input'].get()
+            m=mat_spy.CustomIOR(ior)
+            material= material+':'+str(ior)
         else:
             m=mat_spy.SiO2()
             material='SiO2'
@@ -510,6 +588,23 @@ class App(DirectObject):
         else:
             self.grid.hide()
             self.gui.fade_out('button_grid')
+
+    def make_circle(self, segments=36, thickness=2.0, radius=1.0, line=False):
+        '''Creates a circle '''
+        l=LineSegs()
+        l.set_thickness(thickness)
+        l.move_to(Point3(0,0,0))
+        if line:
+            l.draw_to(Point3(0,radius,0))
+        else:
+            l.move_to(Point3(0,radius,0))
+        temp=NodePath('temp')
+        for i in range(segments+1):
+            temp.set_h(i*360.0/segments)
+            p=render.get_relative_point(temp, (0, radius, 0))
+            l.draw_to(p)
+        temp.remove_node()
+        return render.attach_new_node(l.create())
 
     def make_grid(self, scale=10.0):
         '''Creates a 10x10 grid of given size'''
@@ -792,7 +887,6 @@ class App(DirectObject):
         self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
         self.gui.show_hide('',['button_create_ray',
                                'button_create_solid',
-                               'button_create_lens',
                                'button_create_proj',
                                'load_frame',
                                'list_frame',
@@ -903,15 +997,51 @@ class App(DirectObject):
                 while len(self.active_axis)>1:
                     axis=self.active_axis[0]
                     self.toggle_axis(axis)
+            self.update_axis()
+
+    def update_axis(self):
+        point=self.axis.get_pos(render)
+        if 'x' in self.active_axis and 'y' in self.active_axis and 'z' in self.active_axis:
+            temp=NodePath('temp')
+            temp.set_pos(point)
+            temp.look_at(base.cam)
+            vec=temp.get_quat().get_forward()
+            temp.remove_node()
+        elif 'x' in self.active_axis and 'y' in self.active_axis:
+            vec=self.axis.get_quat().get_up()
+        elif 'x' in self.active_axis and 'z' in self.active_axis:
+            vec=self.axis.get_quat().get_forward()
+        elif 'y' in self.active_axis and 'z' in self.active_axis:
+            vec=self.axis.get_quat().get_right()
+        elif 'x' in self.active_axis:
+            if self.mode == 'rotate':
+                vec=self.axis.get_quat().get_right()
+                self.circle.set_color(Vec4(1,0,0, 1), 1)
+            else:
+                vec=self.axis.get_quat().get_up()
+        elif 'y' in self.active_axis:
+            if self.mode == 'rotate':
+                vec=self.axis.get_quat().get_forward()
+                self.circle.set_color(Vec4(0,1,0, 1), 1)
+            else:
+                vec=self.axis.get_quat().get_up()
+        elif 'z' in self.active_axis:
+            if self.mode == 'rotate':
+                vec=self.axis.get_quat().get_up()
+                self.circle.set_color(Vec4(0,0,1,1), 1)
+            else:
+                vec=self.axis.get_quat().get_right()
+        else:
+            return
+        self.plane=Plane(vec, point)
 
     def _unlock_mouse(self):
         '''Called when the user lets go of the left mouse button '''
         if self.mouse_lock:
-            wp = WindowProperties(base.win.getRequestedProperties())
-            wp.set_cursor_hidden(False)
-            base.win.request_properties(wp)
             self.mouse_lock=False
-            base.win.move_pointer(0, int(self.pre_click_mouse_pos.get_x()), int(self.pre_click_mouse_pos.get_y()))
+            self.last_axis_pos=None
+            self.last_hpr=None
+            self.circle.hide()
             if self.selected_id is not None:
                 node=self.objects[self.selected_id]
                 self.update_ui_for_node(node)
@@ -926,106 +1056,89 @@ class App(DirectObject):
                 if not self.global_coords:
                     self.axis.set_hpr(node.get_hpr(render))
 
-    def _mouse_move_node(self, node, delta):
-        '''Helper function for moving a node based on the camera angle '''
-        if self.active_axis == ['x']:
-            node.set_pos(self.axis, -delta.x-delta.y, 0, 0)
-        elif self.active_axis == ['y']:
-            node.set_pos(self.axis, 0,-delta.x-delta.y, 0)
-        elif self.active_axis == ['z']:
-            node.set_pos(self.axis, 0, 0, delta.x+delta.y)
-        else:
-            cam_h=self.cam_driver.node.get_h()
-            h=(int(90 * round(float(cam_h)/90))%360)//90
-            if h == 0:
-                if 'x' in self.active_axis and 'y' in self.active_axis:
-                    node.set_pos(self.axis, -delta.x, -delta.y, 0)
-                elif 'x' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, -delta.x, 0, delta.y)
-                elif 'y' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, 0, -delta.x, delta.y)
-            if h == 1:
-                if 'x' in self.active_axis and 'y' in self.active_axis:
-                    node.set_pos(self.axis, delta.y, -delta.x, 0)
-                elif 'x' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, -delta.x, 0, delta.y)
-                elif 'y' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, 0, -delta.x, delta.y)
-
-            elif h == 2:
-                if 'x' in self.active_axis and 'y' in self.active_axis:
-                    node.set_pos(self.axis, delta.x, delta.y, 0)
-                elif 'x' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, delta.x, 0, delta.y)
-                elif 'y' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, 0, -delta.x, delta.y)
-
-            elif h == 3:
-                if 'x' in self.active_axis and 'y' in self.active_axis:
-                    node.set_pos(self.axis, -delta.y, delta.x, 0)
-                elif 'x' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, -delta.x, 0, delta.y)
-                elif 'y' in self.active_axis and 'z' in self.active_axis:
-                    node.set_pos(self.axis, 0, delta.x, delta.y)
-
-
     def _lock_mouse(self):
-        ''' Hides the mouse cursor and locks the mouse to the window'''
-        if base.mouseWatcherNode.has_mouse():
-            self.last_mouse_pos=base.mouseWatcherNode.get_mouse()
-            self.pre_click_mouse_pos=base.win.get_pointer(0)
-        wp = WindowProperties(base.win.getRequestedProperties())
-        wp.set_cursor_hidden(True)
-        base.win.request_properties(wp)
-        half_x=base.win.get_x_size()//2
-        half_y=base.win.get_y_size()//2
-        self.mouse_lock_frame_skip=True
+        self.update_axis()
+        self.last_axis_pos = None
+        self.last_hpr=None
+        self.last_vec=None
+        self.last_scale=None
         self.mouse_lock=True
 
-    def _lock_mouse_task(self, task):
-        '''Track the mouse cursor movement inside the window
-        and reacts to the motion depending on current mode'''
-        dt = globalClock.getDt()
+    def _mouse_manipulate_task(self, task):
         if self.mouse_lock:
-            if self.mouse_lock_frame_skip:
-                self.mouse_lock_frame_skip=False
+            if self.selected_id is None:
                 return task.again
-            if base.mouseWatcherNode.has_mouse():
-                m_pos=base.mouseWatcherNode.get_mouse()
-                delta = Vec2(m_pos- self.last_mouse_pos)
-                self.last_mouse_pos = Vec2(m_pos)
-                #don't let it go outside the window
-                if abs(self.last_mouse_pos.x)>0.9 or abs(self.last_mouse_pos.y)>0.9:
-                    half_x=base.win.get_x_size()//2
-                    half_y=base.win.get_y_size()//2
-                    base.win.move_pointer(0, half_x, half_y)
-                    self.last_mouse_pos=Point2(0,0)
-
-                #make things move/rotate/scale
-                if self.selected_id is not None and abs(delta.x)+abs(delta.y) > 0.001:
-                    delta*=dt*60.0
-                    node=self.objects[self.selected_id]
-                    if self.mode == 'move':
-                        self._mouse_move_node(node, delta)
-                        self.axis.set_pos(node.get_pos(render))
-                    elif self.mode == 'rotate':
-                        if 'x' in self.active_axis:
-                            node.set_p(self.axis, node.get_p(self.axis)+delta.x*30.0+delta.y*30.0)
-                        elif 'y' in self.active_axis:
-                            node.set_r(self.axis, node.get_r(self.axis)+delta.x*30.0+delta.y*30.0)
-                        elif 'z' in self.active_axis:
-                            node.set_h(self.axis, node.get_h(self.axis)+delta.x*30.0+delta.y*30.0)
-                        if not self.global_coords:
-                            self.axis.set_hpr(node.get_hpr(render))
-                    elif self.mode == 'scale':
-                        new_scale=node.get_scale()+Vec3(delta.x+delta.y)*0.5
-                        if new_scale < Vec3(0.01):
-                            new_scale=Vec3(0.01)
-                        node.set_scale(new_scale)
             else:
-                half_x=base.win.get_x_size()//2
-                half_y=base.win.get_y_size()//2
-                base.win.move_pointer(0, half_x, half_y)
+                node=self.objects[self.selected_id]
+                if node is None:
+                    return task.again
+            #self.update_axis()
+            if base.mouseWatcherNode.hasMouse():
+                mpos = base.mouseWatcherNode.get_mouse()
+                pos3d = Point3()
+                near_point = Point3()
+                far_point = Point3()
+                base.camLens.extrude(mpos, near_point, far_point)
+            if self.plane.intersects_line(pos3d,
+                                          render.get_relative_point(base.camera, near_point),
+                                          render.get_relative_point(base.camera, far_point)):
+                if self.mode == 'move':
+                    axis_pos=render.get_relative_point(self.axis, pos3d)
+                    if self.last_axis_pos is None:
+                        self.last_axis_pos=axis_pos
+                        return task.again
+                    else:
+                        delta=axis_pos-self.last_axis_pos
+
+                    if 'x' not in self.active_axis:
+                        delta.x=0
+                    if 'y' not in self.active_axis:
+                        delta.y=0
+                    if 'z' not in self.active_axis:
+                        delta.z=0
+                    if self.global_coords:
+                        delta*=Vec3(-1,1,1)
+                    node.set_pos(self.axis, node.get_pos(self.axis)+delta)
+                    #store last pos
+                    self.last_axis_pos=axis_pos
+                elif self.mode == 'rotate':
+                    #make a direction vector
+                    vec=self.axis.get_pos()-pos3d
+                    #visual aid
+                    self.circle.set_scale(vec.length())
+                    self.circle.set_pos(self.axis.get_pos())
+                    self.circle.heads_up(pos3d, self.plane.get_normal())
+                    self.circle.show()
+                    #we just need the direction
+                    vec.normalize()
+                    #nothing more to do at this point if we have no stored vector
+                    if self.last_vec is None:
+                        self.last_vec=vec
+                        return task.again
+                    #get an angle between the vec and the vec from last frame;
+                    #the angle is positive if you can rotate last_vec to vec clockwise (I assume along
+                    #the smallest possible arc), when looking in the direction of the plane normal
+                    angle=self.last_vec.signed_angle_deg(vec, self.plane.get_normal())
+                    q=Quat()
+                    q.set_from_axis_angle(angle, self.plane.get_normal())
+                    q_model = node.get_quat()
+                    # multiply the model quaternion by the axis-angle-quaternion
+                    q_model *= q
+                    node.set_quat(q_model)
+                    #print some debug)
+                    #print(self.model.get_hpr(render))
+                    #store the vec for next frame
+                    self.last_vec=vec
+                elif self.mode == 'scale':
+                    distance=(self.axis.get_pos(render)-pos3d).length()
+                    if self.last_scale is None:
+                        self.last_scale=distance
+                        return task.again
+                    delta_distance= self.last_scale-distance
+                    self.last_scale=distance
+                    node.set_scale(node.get_scale(render)-Vec3(delta_distance))
+
+
         return task.again
 
     def _on_click(self):
@@ -1226,7 +1339,8 @@ class App(DirectObject):
             quad.set_bin('fixed', 10)
             quad.set_depth_offset(1)
             quad.show_through(self.camera_mask)
-            quad.set_texture(loader.load_texture('images/test1.png'), 1)
+            tex=node.get_python_tag('texture')
+            quad.set_texture(loader.load_texture(tex), 1)
             node.set_python_tag('quad', quad)
 
     def draw_line(self, node_id, points, color=None):
@@ -1586,7 +1700,7 @@ class App(DirectObject):
                 node.set_scale(max(x, 0.05), 1.0, max(z, 0.05))
 
     def make_projector(self, color=None, wavelength=None, model_name=None,
-                pos=None, hpr=None, scale=None, angle_h=0, angle_v=0):
+                pos=None, hpr=None, scale=None, angle_h=22.5, angle_v=22.5):
         '''Creates a new projector object'''
         mesh=loader.load_model('data/box.egg')
         mesh.reparent_to(self.scene)
@@ -1600,6 +1714,7 @@ class App(DirectObject):
         mesh.set_python_tag('type', 'projector')
         mesh.set_python_tag('angle_h', angle_h)
         mesh.set_python_tag('angle_v', angle_v)
+        mesh.set_python_tag('texture', 'images/test1.png')
         if color is None:
             color=self.colors.new_color()
         else:
@@ -1615,7 +1730,9 @@ class App(DirectObject):
         c_node.node().set_into_collide_mask(BitMask32.bit(1))
         mesh.set_python_tag('line', NodePath('line'))
         mesh.set_python_tag('name', model_name)
-        mesh.hide(self.camera_mask)
+        #mesh.hide(self.camera_mask)
+        mesh.set_transparency(TransparencyAttrib.M_alpha)
+        mesh.set_color(0.5,0.5,0.5, 0.5)
         if pos is None:
             mesh.set_pos(0,-2, 0.125)
             self.select_by_id(id)
@@ -1678,7 +1795,9 @@ class App(DirectObject):
         c_node.node().set_into_collide_mask(BitMask32.bit(1))
         mesh.set_python_tag('line', NodePath('line'))
         mesh.set_python_tag('name', model_name)
-        mesh.hide(self.camera_mask)
+        #mesh.hide(self.camera_mask)
+        mesh.set_transparency(TransparencyAttrib.M_alpha)
+        mesh.set_color(0.5,0.5,0.5, 0.5)
         if pos is None:
             mesh.set_pos(0,-2, 0.125)
             self.select_by_id(id)
