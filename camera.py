@@ -163,25 +163,8 @@ class CameraControler (DirectObject):
             #pan
             if self.key_map['pan']:
                 pos=Vec3(delta.x, delta.y, 0)
-                self.node.set_pos(self.node, pos*self.move_speed*dt*100.0)
+                self.node.set_pos(self.node, pos*self.move_speed*dt*300.0)
             #rotate
-            '''if not self.key_map['rotate']:
-                delta=self.last_delta#-Point2(dt*0.1)#*(0.9999-dt)
-                if not delta.almost_equal(Point2(0.0)):
-                    if delta.x <0:
-                        delta.x+=dt*0.1
-                    else:
-                        delta.x-=dt*0.1
-                    if delta.y <0:
-                        delta.y+=dt*0.1
-                    else:
-                        delta.y-=dt*0.1
-                    if abs(delta[0])<0.005:
-                        delta[0]=0
-                    if abs(delta[1])<0.005:
-                        delta[1]=0
-            else:
-                self.last_delta=delta'''
             if self.key_map['rotate']:
                 p=self.gimbal.get_p()- delta[1]*self.speed*dt
                 self.gimbal.set_p(min(max(p, self.max_p[0]), self.max_p[1]))

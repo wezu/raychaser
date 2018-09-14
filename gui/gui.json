@@ -7,28 +7,54 @@
          "scroll":0,
          "autoresize":1,
          "button":  [
-                    {"txt":"Delete","cmd":"app.delete_object()", "width":96, "pos":[0,224]},
-                    {"txt":"Frozen","cmd":"app.freeze_object()", "width":96, "pos":[80,224], "name":"freeze_button"},
-                    {"txt":"Stashed","cmd":"app.stash_object()", "width":96, "pos":[160,224], "name":"stash_button"}
+                    {"txt":"Delete","cmd":"app.delete_object()", "width":96, "pos":[0,194]},
+                    {"txt":"Frozen","cmd":"app.freeze_object()", "width":96, "pos":[80,194], "name":"freeze_button"},
+                    {"txt":"Stashed","cmd":"app.stash_object()", "width":96, "pos":[160,194], "name":"stash_button"},
+                    {"txt":"Edit pivot","cmd":"app.gui.toggle('pivot_frame')", "width":128, "pos":[64,226]}
                     ],
 
          "text":[
-                    {"txt":"Name:\n\n\nPosition(X,Y,Z):\n\n\nRotation(H,P,R):\n\n\nScale(sX,sY,sZ):", "pos":[26,8], "big_font":0, "align":"left"}
+                    {"txt":"Position(X,Y,Z):\n\n\nRotation(H,P,R):\n\n\nScale(sX,sY,sZ):", "pos":[26,32], "big_font":0, "align":"left"}
                 ],
          "input":[
-                    {"txt":"Foobar",           "width":224, "pos":[16,28], "name":"name_input", "cmd":"app.apply_input(txt, ['name'])"},
-                    {"txt":"0.00", "width":96, "pos":[0,82], "name":"x_pos_input", "cmd":"app.apply_input(txt, ['x'])"},
-                    {"txt":"0.00", "width":96, "pos":[80,82], "name":"y_pos_input", "cmd":"app.apply_input(txt, ['y'])"},
-                    {"txt":"0.00", "width":96, "pos":[160,82], "name":"z_pos_input", "cmd":"app.apply_input(txt, ['z'])"},
-                    {"txt":"0.00", "width":96, "pos":[0,136], "name":"h_input", "cmd":"app.apply_input(txt, ['h'])"},
-                    {"txt":"0.00", "width":96, "pos":[80,136], "name":"p_input", "cmd":"app.apply_input(txt, ['p'])"},
-                    {"txt":"0.00", "width":96, "pos":[160,136], "name":"r_input", "cmd":"app.apply_input(txt, ['r'])"},
-                    {"txt":"0.00", "width":96, "pos":[0,190], "name":"sx_input", "cmd":"app.apply_input(txt, ['sx'])"},
-                    {"txt":"0.00", "width":96, "pos":[80,190], "name":"sy_input", "cmd":"app.apply_input(txt, ['sy'])"},
-                    {"txt":"0.00", "width":96, "pos":[160,190], "name":"sz_input", "cmd":"app.apply_input(txt, ['sz'])"}
+                    {"txt":"Foobar",           "width":224, "pos":[0,4], "name":"name_input", "cmd":"app.apply_input(txt, ['name'])"},
+                    {"txt":"0.00", "width":96, "pos":[0,54], "name":"x_pos_input", "cmd":"app.apply_input(txt, ['x'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,54], "name":"y_pos_input", "cmd":"app.apply_input(txt, ['y'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,54], "name":"z_pos_input", "cmd":"app.apply_input(txt, ['z'])"},
+                    {"txt":"0.00", "width":96, "pos":[0,108], "name":"h_input", "cmd":"app.apply_input(txt, ['h'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,108], "name":"p_input", "cmd":"app.apply_input(txt, ['p'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,108], "name":"r_input", "cmd":"app.apply_input(txt, ['r'])"},
+                    {"txt":"0.00", "width":96, "pos":[0,162], "name":"sx_input", "cmd":"app.apply_input(txt, ['sx'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,162], "name":"sy_input", "cmd":"app.apply_input(txt, ['sy'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,162], "name":"sz_input", "cmd":"app.apply_input(txt, ['sz'])"}
                 ],
          "widget":[
                   {"cmd":"app.gui.show_hide('', 'prop_frame')", "pos":[216, 4], "geom_name":"close_icon"}
+                ]
+        },
+        {"name":"pivot_frame",
+         "size":[256, 192],
+         "pos":[-256,0],
+         "parent":"prop_frame",
+         "header":0,
+         "scroll":0,
+         "autoresize":0,
+         "button":  [
+                    {"txt":"Center to Object","cmd":"app.center_pivot()", "width":192, "pos":[32,140]}
+                    ],
+         "text":[
+                {"txt":"Pivot Position(X,Y,Z):\n\n\nPivot Rotation(H,P,R):", "pos":[26,32], "big_font":0, "align":"left"}
+                ],
+        "widget":[
+                  {"cmd":"app.gui.show_hide('', 'pivot_frame')", "pos":[8, 8], "geom_name":"close_icon"}
+                ],
+         "input":[
+                    {"txt":"0.00", "width":96, "pos":[0,54], "name":"pivot_x_pos_input", "cmd":"app.apply_input(txt, ['pivot_x'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,54], "name":"pivot_y_pos_input", "cmd":"app.apply_input(txt, ['pivot_y'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,54], "name":"pivot_z_pos_input", "cmd":"app.apply_input(txt, ['pivot_z'])"},
+                    {"txt":"0.00", "width":96, "pos":[0,108], "name":"pivot_h_input", "cmd":"app.apply_input(txt, ['pivot_h'])"},
+                    {"txt":"0.00", "width":96, "pos":[80,108], "name":"pivot_p_input", "cmd":"app.apply_input(txt, ['pivot_p'])"},
+                    {"txt":"0.00", "width":96, "pos":[160,108], "name":"pivot_r_input", "cmd":"app.apply_input(txt, ['pivot_r'])"}
                 ]
         },
         {"name":"mesh_prop_frame",

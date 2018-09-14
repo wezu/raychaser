@@ -733,6 +733,27 @@ class App(DirectObject):
             node.set_python_tag('angle_h', min(89.9, max(-89.9, value)))
         elif txt=='angle_v':
             node.set_python_tag('angle_v', min(89.9, max(-89.9, value)))
+        elif txt=='pivot_x':
+            pivot_pos=node.get_python_tag('pivot_pos')
+            pivot_pos.x=value
+            node.set_python_tag('pivot_pos', pivot_pos)
+            self.move_pivot(node, pivot_pos)
+        elif txt=='pivot_y':
+            pivot_pos=node.get_python_tag('pivot_pos')
+            pivot_pos.y=value
+            node.set_python_tag('pivot_pos', pivot_pos)
+            self.move_pivot(node, pivot_pos)
+        elif txt=='pivot_z':
+            pivot_pos=node.get_python_tag('pivot_pos')
+            pivot_pos.z=value
+            node.set_python_tag('pivot_pos', pivot_pos)
+            self.move_pivot(node, pivot_pos)
+        elif txt=='pivot_h':
+            node.ls()
+        elif txt=='pivot_p':
+            node.ls()
+        elif txt=='pivot_r':
+            node.ls()
         self.update_ui_for_node(node)
         if node.get_python_tag('type') in ('ray', 'projector'):
             node_id=node.get_python_tag('id')
@@ -776,6 +797,9 @@ class App(DirectObject):
         self.gui['sx_input'].set('{0:.2f}'.format(*node.get_scale(render)))
         self.gui['sy_input'].set('{1:.2f}'.format(*node.get_scale(render)))
         self.gui['sz_input'].set('{2:.2f}'.format(*node.get_scale(render)))
+        self.gui['pivot_x_pos_input'].set('{0:.2f}'.format(*node.get_python_tag('pivot_pos')))
+        self.gui['pivot_x_pos_input'].set('{1:.2f}'.format(*node.get_python_tag('pivot_pos')))
+        self.gui['pivot_x_pos_input'].set('{2:.2f}'.format(*node.get_python_tag('pivot_pos')))
 
         if node.has_python_tag('stashed'):
             self.gui.fade_in('stash_button')
@@ -959,6 +983,26 @@ class App(DirectObject):
                 else:
                     self.axis.set_hpr(node.get_hpr(render))
 
+    def center_pivot(self):
+        if self.selected_id is not None:
+            node=self.objects[self.selected_id]
+            if node is not None:
+                for child in node.get_children():
+                    if isinstance(child.node(), ModelRoot):
+                        bounds=child.get_bounds()
+                        pos=bounds.get_center()
+                        self.move_pivot(node, pos)
+                        break
+
+    def move_pivot(self, node, pos):
+        for child in node.get_children():
+            child.set_pos(-pos)
+        node.set_pos(pos)
+        node.set_python_tag('pivot_pos', pos)
+        self.axis.set_pos(node.get_pos(render))
+        self.update_ui_for_node(node)
+        self.do_raytrace()
+
     def set_coords_local(self, state=None):
         '''If state is True objects will be moved/rotated/scaled
            in their own coordinates (model space),
@@ -1096,8 +1140,8 @@ class App(DirectObject):
                         delta.y=0
                     if 'z' not in self.active_axis:
                         delta.z=0
-                    if self.global_coords:
-                        delta*=Vec3(-1,1,1)
+                    if not self.global_coords:
+                        delta.x*=-1
                     node.set_pos(self.axis, node.get_pos(self.axis)+delta)
                     #store last pos
                     self.last_axis_pos=axis_pos
@@ -1359,7 +1403,12 @@ class App(DirectObject):
         line.remove_node()
         l=LineSegs()
         l.set_thickness(2.0)
-        l.move_to(node.get_pos(render))
+        #l.move_to(node.get_pos(render))
+        #start point may differ because of pivot shift
+        for child in node.get_children():
+            if isinstance(child.node(), ModelRoot):
+                l.move_to(child.get_pos(render))
+                break
         move_next=False
         for point in points:
             if point is None:
@@ -1453,6 +1502,10 @@ class App(DirectObject):
                     column_offset=1
                 points=[]
                 q=Quat()
+                for child in node.get_children():
+                    if isinstance(child.node(), ModelRoot):
+                        node=child
+                        break
                 for row in range(rows):
                     #scale the horizontal angles
                     if rows>1:
@@ -1702,48 +1755,51 @@ class App(DirectObject):
     def make_projector(self, color=None, wavelength=None, model_name=None,
                 pos=None, hpr=None, scale=None, angle_h=22.5, angle_v=22.5):
         '''Creates a new projector object'''
-        mesh=loader.load_model('data/box.egg')
-        mesh.reparent_to(self.scene)
-        self.objects.append(mesh)
+        root=self.scene.attach_new_node('project')
+        model=loader.load_model('data/box.egg')
+        model.reparent_to(root)
+        self.objects.append(root)
         id=len(self.objects)-1
         if model_name is None:
             model_name='Proj. '+str(id)
         if wavelength is None:
             wavelength=650
-        mesh.set_python_tag('id', id)
-        mesh.set_python_tag('type', 'projector')
-        mesh.set_python_tag('angle_h', angle_h)
-        mesh.set_python_tag('angle_v', angle_v)
-        mesh.set_python_tag('texture', 'images/test1.png')
+        root.set_python_tag('id', id)
+        root.set_python_tag('type', 'projector')
+        root.set_python_tag('angle_h', angle_h)
+        root.set_python_tag('angle_v', angle_v)
+        root.set_python_tag('pivot_pos', Point3(0,0,0))
+        root.set_python_tag('pivot_hpr', Point3(0,0,0))
+        root.set_python_tag('texture', 'images/test1.png')
         if color is None:
             color=self.colors.new_color()
         else:
             color=Vec4(*color)
-        mesh.set_python_tag('line_color', color)
+        root.set_python_tag('line_color', color)
         self.gui['proj_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
-        mesh.set_transparency(TransparencyAttrib.M_alpha)
+        root.set_transparency(TransparencyAttrib.M_alpha)
         #collision
-        c_node=mesh.attach_new_node(CollisionNode('cnode'))
-        for points in self._get_triangles(mesh, []):
+        c_node=root.attach_new_node(CollisionNode('cnode'))
+        for points in self._get_triangles(model, []):
             if len(points)==3:
                 c_node.node().add_solid(CollisionPolygon(*points))
         c_node.node().set_into_collide_mask(BitMask32.bit(1))
-        mesh.set_python_tag('line', NodePath('line'))
-        mesh.set_python_tag('name', model_name)
-        #mesh.hide(self.camera_mask)
-        mesh.set_transparency(TransparencyAttrib.M_alpha)
-        mesh.set_color(0.5,0.5,0.5, 0.5)
+        root.set_python_tag('line', NodePath('line'))
+        root.set_python_tag('name', model_name)
+        #root.hide(self.camera_mask)
+        root.set_transparency(TransparencyAttrib.M_alpha)
+        root.set_color(0.5,0.5,0.5, 0.5)
         if pos is None:
-            mesh.set_pos(0,-2, 0.125)
+            root.set_pos(0,-2, 0.125)
             self.select_by_id(id)
         else:
-            mesh.set_pos(*pos)
+            root.set_pos(*pos)
         if hpr is not None:
-            mesh.set_hpr(*hpr)
+            root.set_hpr(*hpr)
         if scale is not None:
-            mesh.set_scale(*scale)
+            root.set_scale(*scale)
         else:
-            self.scale_emmiter_geom(mesh)
+            self.scale_emmiter_geom(root)
         #button
         object_type='proj.'
         self.gui.button(txt='{name:<34} {type:<10} {id}'.format(name=model_name, type=object_type, id=id),
@@ -1763,52 +1819,55 @@ class App(DirectObject):
                 columns=2, rows=2, column_offset=0.1, row_offset=0.1,
                 angle_h=0, angle_v=0):
         '''Creates a new ray object'''
-        mesh=loader.load_model('data/box.egg')
-        mesh.reparent_to(self.scene)
-        self.objects.append(mesh)
+        root=self.scene.attach_new_node('ray')
+        model=loader.load_model('data/box.egg')
+        model.reparent_to(root)
+        self.objects.append(root)
         id=len(self.objects)-1
         if model_name is None:
             model_name='Ray '+str(id)
         if wavelength is None:
             wavelength=650
-        mesh.set_python_tag('id', id)
-        mesh.set_python_tag('type', 'ray')
-        mesh.set_python_tag('wave', wavelength)
-        mesh.set_python_tag('rows', rows)
-        mesh.set_python_tag('columns', columns)
-        mesh.set_python_tag('column_offset',column_offset )
-        mesh.set_python_tag('row_offset', row_offset)
-        mesh.set_python_tag('angle_h', angle_h)
-        mesh.set_python_tag('angle_v', angle_v)
+        root.set_python_tag('id', id)
+        root.set_python_tag('type', 'ray')
+        root.set_python_tag('wave', wavelength)
+        root.set_python_tag('rows', rows)
+        root.set_python_tag('columns', columns)
+        root.set_python_tag('column_offset',column_offset )
+        root.set_python_tag('row_offset', row_offset)
+        root.set_python_tag('angle_h', angle_h)
+        root.set_python_tag('angle_v', angle_v)
+        root.set_python_tag('pivot_pos', Point3(0,0,0))
+        root.set_python_tag('pivot_hpr', Point3(0,0,0))
         if color is None:
             color=self.colors.new_color()
         else:
             color=Vec4(*color)
-        mesh.set_python_tag('line_color', color)
+        root.set_python_tag('line_color', color)
         self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
-        mesh.set_transparency(TransparencyAttrib.M_alpha)
+        root.set_transparency(TransparencyAttrib.M_alpha)
         #collision
-        c_node=mesh.attach_new_node(CollisionNode('cnode'))
-        for points in self._get_triangles(mesh, []):
+        c_node=root.attach_new_node(CollisionNode('cnode'))
+        for points in self._get_triangles(model, []):
             if len(points)==3:
                 c_node.node().add_solid(CollisionPolygon(*points))
         c_node.node().set_into_collide_mask(BitMask32.bit(1))
-        mesh.set_python_tag('line', NodePath('line'))
-        mesh.set_python_tag('name', model_name)
+        root.set_python_tag('line', NodePath('line'))
+        root.set_python_tag('name', model_name)
         #mesh.hide(self.camera_mask)
-        mesh.set_transparency(TransparencyAttrib.M_alpha)
-        mesh.set_color(0.5,0.5,0.5, 0.5)
+        root.set_transparency(TransparencyAttrib.M_alpha)
+        root.set_color(0.5,0.5,0.5, 0.5)
         if pos is None:
-            mesh.set_pos(0,-2, 0.125)
+            root.set_pos(0,-2, 0.125)
             self.select_by_id(id)
         else:
-            mesh.set_pos(*pos)
+            root.set_pos(*pos)
         if hpr is not None:
-            mesh.set_hpr(*hpr)
+            root.set_hpr(*hpr)
         if scale is not None:
-            mesh.set_scale(*scale)
+            root.set_scale(*scale)
         else:
-            self.scale_emmiter_geom(mesh)
+            self.scale_emmiter_geom(root)
         #button
         object_type='ray'
         self.gui.button(txt='{name:<34} {type:<10} {id}'.format(name=model_name, type=object_type, id=id),
@@ -1848,24 +1907,27 @@ class App(DirectObject):
             mesh=self._make_smooth_mesh(triangles, threshold, flip_normal)
             if self.write_model_bam:
                 mesh.write_bam_file(model+'.bam')
-        mesh.reparent_to(self.scene)
-        self.objects.append(mesh)
+        root=self.scene.attach_new_node(model_name)
+        mesh.reparent_to(root)
+        self.objects.append(root)
         id=len(self.objects)-1
-        mesh.set_python_tag('id', id)
-        mesh.set_python_tag('flip_normal', flip_normal)
-        mesh.set_python_tag('threshold', threshold)
-        mesh.set_python_tag('type', object_type)
-        mesh.set_python_tag('material', mat_spy.SiO2())
-        mesh.set_python_tag('material_name', 'SiO2')
-        mesh.set_python_tag('name', model_name)
-        mesh.set_python_tag('model_file', model)
-        mesh.set_python_tag('gloss', 0.0)
-        mesh.set_color(LColor(1.0))
-        mesh.set_transparency(TransparencyAttrib.M_alpha)
-        mesh.set_shader(self.lit_shader, 1)
-        mesh.set_shader_input('gloss', 0.0)
+        root.set_python_tag('id', id)
+        root.set_python_tag('flip_normal', flip_normal)
+        root.set_python_tag('threshold', threshold)
+        root.set_python_tag('type', object_type)
+        root.set_python_tag('material', mat_spy.SiO2())
+        root.set_python_tag('material_name', 'SiO2')
+        root.set_python_tag('name', model_name)
+        root.set_python_tag('model_file', model)
+        root.set_python_tag('gloss', 0.0)
+        root.set_python_tag('pivot_pos', Point3(0,0,0))
+        root.set_python_tag('pivot_hpr', Point3(0,0,0))
+        root.set_color(LColor(1.0))
+        root.set_transparency(TransparencyAttrib.M_alpha)
+        root.set_shader(self.lit_shader, 1)
+        root.set_shader_input('gloss', 0.0)
         #collision
-        c_node=mesh.attach_new_node(CollisionNode('cnode'))
+        c_node=root.attach_new_node(CollisionNode('cnode'))
         for points in triangles:
             #print(points)
             c_node.node().add_solid(CollisionPolygon(*points))
@@ -1888,7 +1950,7 @@ class App(DirectObject):
         if select:
             self.select_by_id(id)
             self.do_raytrace()
-        return mesh
+        return root
 
 
 application=App()
