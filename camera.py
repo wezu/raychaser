@@ -8,7 +8,7 @@ __all__ = ['CameraControler']
 
 class CameraControler (DirectObject):
     def __init__(self, pos=(0,0,3.0), offset=(0, 12, 12), speed=1.0,
-                 zoom_speed=1.0, limits=(3.0, 500.0, -110, 110.0)):
+                 zoom_speed=1.0, limits=(3.0, 500.0, -110, 110.0), relative_pan=True):
         self.node  = render.attach_new_node("node")
         self.node.set_pos(pos)
         self.gimbal  = self.node.attach_new_node("gimbal")
@@ -18,9 +18,9 @@ class CameraControler (DirectObject):
 
         self.initial_pos=pos
         self.initial_offset=offset
-
+        self.relative_pan=relative_pan
         self.last_mouse_pos=Vec2(0,0)
-        self.speed=speed*7000.0
+        self.speed=speed*100.0
         self.move_speed=speed
         self.zoom_speed=zoom_speed
         self.zoom = 0.0
@@ -162,11 +162,15 @@ class CameraControler (DirectObject):
             self.last_mouse_pos = Vec2(m_pos)
             #pan
             if self.key_map['pan']:
-                pos=Vec3(delta.x, delta.y, 0)
-                self.node.set_pos(self.node, pos*self.move_speed*dt*300.0)
+                if self.relative_pan:
+                    pos=Vec3(delta.x, 0, delta.y)
+                    self.node.set_pos(base.cam, self.node.get_pos(base.cam)-pos*self.move_speed*5.0)
+                else:
+                    pos=Vec3(delta.x, delta.y, 0)
+                    self.node.set_pos(self.node, pos*self.move_speed*5.0)
             #rotate
             if self.key_map['rotate']:
-                p=self.gimbal.get_p()- delta[1]*self.speed*dt
+                p=self.gimbal.get_p()- delta[1]*self.speed
                 self.gimbal.set_p(min(max(p, self.max_p[0]), self.max_p[1]))
-                self.node.set_h(self.node.get_h()- delta[0]*self.speed*dt)
+                self.node.set_h(self.node.get_h()- delta[0]*self.speed)
         return task.again

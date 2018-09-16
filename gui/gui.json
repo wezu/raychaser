@@ -258,8 +258,15 @@
         "button_list":{"txt":"Select", "cmd":"app.gui.toggle('list_frame', ['load_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":96, "pos":[226,0], "parent":"top_left"},
         "button_help":{"txt":"Help", "cmd":"app.show_help()", "width":96, "pos":[310,0], "parent":"top_left"},
 
-        "button_cam_reset":{"txt":"Reset Camera", "cmd":"app.reset_cam()", "width":160, "pos":[-444,-32], "parent":"bottom_right"},
-        "button_cam":{"txt":"Ortho. Camera", "cmd":"app.ortho_cam()", "width":160, "pos":[-296,-32], "parent":"bottom_right"},
+
+        "button_camera":{"pos":[-296,-32], "txt":"Camera...", "cmd":"app.gui.toggle(['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'], ['prop_frame'])", "width":160, "parent":"bottom_right"},
+
+        "button_cam_reset":{"txt":"Reset", "cmd":"app.reset_cam()", "width":160, "pos":[-296,-62], "parent":"bottom_right"},
+        "button_cam_ortho":{"txt":"Orthographic", "cmd":"app.ortho_cam()", "width":160, "pos":[-296,-92], "parent":"bottom_right"},
+        "button_cam_gimbal":{"txt":"Show focus", "cmd":"app.show_cam_gimbal()", "width":160, "pos":[-296,-122], "parent":"bottom_right"},
+        "button_cam_pan":{"txt":"Relative pan", "cmd":"app.cam_relative_pan()", "width":160, "pos":[-296,-152], "parent":"bottom_right"},
+
+
         "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[-148,-32], "parent":"bottom_right"},
 
         "button_create_ray":{"txt":"Ray", "cmd":"app.make_ray()", "width":96, "pos":[142,32], "parent":"top_left"},
@@ -273,12 +280,14 @@
         "button_x":{"txt":"X", "cmd":"app.toggle_axis('x')", "width":64, "pos":[246,-32], "parent":"bottom_left"},
         "button_y":{"txt":"Y", "cmd":"app.toggle_axis('y')", "width":64, "pos":[298,-32], "parent":"bottom_left"},
         "button_z":{"txt":"Z", "cmd":"app.toggle_axis('z')", "width":64, "pos":[350,-32], "parent":"bottom_left"},
-        "button_local":{"txt":"Global", "cmd":"app.set_coords_local()", "width":96, "pos":[402,-32], "parent":"bottom_left"}
-
+        "button_local":{"txt":"Global", "cmd":"app.set_coords_local()", "width":96, "pos":[402,-32], "parent":"bottom_left"},
+        "button_snap":{"txt":"Snap", "cmd":"app.set_snap()", "width":64, "pos":[486,-32], "parent":"bottom_left"}
         },
 "icon": {},
 "slider":{},
-"input":{"input_grid":{"txt":"10.0", "width":64, "pos":[84,0], "parent":"button_grid", "cmd":"app.apply_input(txt, ['grid'])"}},
+"input":{"input_grid":{"txt":"10.0", "width":64, "pos":[84,0], "parent":"button_grid", "cmd":"app.apply_input(txt, ['grid'])"},
+         "input_snap":{"txt":"10.0", "width":64, "pos":[52,0], "parent":"button_snap", "cmd":"app.apply_input(txt, ['snap'])"}
+        },
 "bar":  {},
 "text": {
         "on_screen_txt":{"color":[1,1,1,1],"align":"left", "big_font":0, "parent":"bottom_left", "pos":[6,-54], "txt":"String is None", "sort":12}

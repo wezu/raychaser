@@ -99,6 +99,9 @@ class App(DirectObject):
             self.img_buttons=[]
             self.mode='select'
             self.global_coords=True
+            self.snap=False
+            self.snap_pos=0.25
+            self.snap_angle=5.0
             self.active_axis=['x','y','z']
             self.objects=[]
             self.scene=render.attach_new_node('scene')
@@ -111,10 +114,11 @@ class App(DirectObject):
             self.gui=UI()
             self.gui.load_from_file('gui/gui.json')
             self.gui.show_hide(['button_save', 'button_create', 'button_list','button_help',
-                                'button_grid','button_cam_reset','button_cam','input_grid',
+                                'button_grid','button_camera','input_grid',
                                 'button_move','button_rotate','button_scale'])
 
             self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
+            self.set_snap(False)
             self.gui.resize_callback.append(self.on_resize)
             #use a better camera controller
             cam_speed=ConfigVariableDouble('camera-speed', 1.0).get_value()
@@ -135,6 +139,10 @@ class App(DirectObject):
             self.cam_driver.gimbal.set_p(45)
             self._setup_select_buff()
             self.ortho_cam(True)
+
+            self.cam_circle=self.make_circle(segments=16, thickness=1.5, radius=0.25)
+            self.cam_circle.reparent_to(self.cam_driver.node)
+            self.cam_circle.set_color((0.4, 0.5, 0.4, 1.0), 1)
 
             #collision, mouse picking setup
             self.cam_ray_trav = CollisionTraverser()
@@ -433,6 +441,33 @@ class App(DirectObject):
                                        parent='model_frame_canvas')
         self.gui.sort_buttons('model_frame_canvas', 'type', False)
 
+    def cam_relative_pan(self, relative=None):
+        if relative is None:
+            self.cam_driver.relative_pan = not self.cam_driver.relative_pan
+        else:
+            self.cam_driver.relative_pan =relative
+        if self.cam_driver.relative_pan:
+            self.gui.fade_in('button_cam_pan')
+        else:
+            self.gui.fade_out('button_cam_pan')
+
+    def show_cam_gimbal(self, show=None):
+        is_hidden=self.cam_circle.is_hidden()
+        if show is None:
+            if is_hidden:
+                self.cam_circle.show()
+            else:
+                self.cam_circle.hide()
+        else:
+            if show:
+                self.cam_circle.show()
+            else:
+                self.cam_circle.hide()
+        if self.cam_circle.is_hidden():
+            self.gui.fade_out('button_cam_gimbal')
+        else:
+            self.gui.fade_in('button_cam_gimbal')
+
     def ortho_cam(self, set_orto=None):
         '''GUI callback -sets the main camera into orthographic or perspective mode'''
         if set_orto is None:
@@ -446,7 +481,7 @@ class App(DirectObject):
            base.camLens.set_near_far(0.01, 500.0)
            base.cam.node().set_lens(base.camLens)
            self.select_cam.node().set_lens(base.camLens)
-           self.gui.fade_in('button_cam')
+           self.gui.fade_in('button_cam_ortho')
         else:
             base.camLens=PerspectiveLens()
             base.camLens.set_fov(60)
@@ -454,7 +489,7 @@ class App(DirectObject):
             base.camLens.set_near_far(0.1, 500.0)
             base.cam.node().set_lens(base.camLens)
             self.select_cam.node().set_lens(base.camLens)
-            self.gui.fade_out('button_cam')
+            self.gui.fade_out('button_cam_ortho')
 
     def set_reflect(self):
         if self.selected_id is None:
@@ -749,11 +784,16 @@ class App(DirectObject):
             node.set_python_tag('pivot_pos', pivot_pos)
             self.move_pivot(node, pivot_pos)
         elif txt=='pivot_h':
-            node.ls()
+            pass
         elif txt=='pivot_p':
-            node.ls()
+            pass
         elif txt=='pivot_r':
-            node.ls()
+            pass
+        elif txt=='snap':
+            if self.mode=='move':
+                self.snap_pos=value
+            else:
+                self.snap_angle=value
         self.update_ui_for_node(node)
         if node.get_python_tag('type') in ('ray', 'projector'):
             node_id=node.get_python_tag('id')
@@ -798,8 +838,8 @@ class App(DirectObject):
         self.gui['sy_input'].set('{1:.2f}'.format(*node.get_scale(render)))
         self.gui['sz_input'].set('{2:.2f}'.format(*node.get_scale(render)))
         self.gui['pivot_x_pos_input'].set('{0:.2f}'.format(*node.get_python_tag('pivot_pos')))
-        self.gui['pivot_x_pos_input'].set('{1:.2f}'.format(*node.get_python_tag('pivot_pos')))
-        self.gui['pivot_x_pos_input'].set('{2:.2f}'.format(*node.get_python_tag('pivot_pos')))
+        self.gui['pivot_y_pos_input'].set('{1:.2f}'.format(*node.get_python_tag('pivot_pos')))
+        self.gui['pivot_z_pos_input'].set('{2:.2f}'.format(*node.get_python_tag('pivot_pos')))
 
         if node.has_python_tag('stashed'):
             self.gui.fade_in('stash_button')
@@ -907,6 +947,16 @@ class App(DirectObject):
         self.selected_id=id
         self.update_ui_for_node(node)
 
+    def set_snap(self, on=None):
+        if on is None:
+            self.snap=not self.snap
+        else:
+            self.snap=on
+        if self.snap:
+            self.gui.fade_in('button_snap')
+        else:
+            self.gui.fade_out('button_snap')
+
     def set_select_mode(self):
         self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
         self.gui.show_hide('',['button_create_ray',
@@ -918,7 +968,13 @@ class App(DirectObject):
                                'button_x',
                                'button_y',
                                'button_z',
-                               'button_local'])
+                               'button_local',
+                               'button_snap',
+                               'input_snap',
+                               'button_cam_reset',
+                               'button_cam_ortho',
+                               'button_cam_gimbal',
+                               'button_cam_pan'])
         self.axis.find('x').hide()
         self.axis.find('y').hide()
         self.axis.find('z').hide()
@@ -932,7 +988,8 @@ class App(DirectObject):
         self.mode='move'
         self.gui.fade_in('button_move')
         self.gui.fade_out(['button_rotate','button_scale'])
-        self.gui.show_hide(['button_x','button_y','button_z','button_local'])
+        self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'])
+        self.gui['input_snap'].set('{:.2f}'.format(self.snap_pos))
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
             if self.selected_id is not None:
@@ -951,7 +1008,8 @@ class App(DirectObject):
         self.mode='rotate'
         self.gui.fade_in('button_rotate')
         self.gui.fade_out(['button_move','button_scale'])
-        self.gui.show_hide(['button_x','button_y','button_z','button_local'])
+        self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'])
+        self.gui['input_snap'].set('{:.2f}'.format(self.snap_angle))
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
             if self.selected_id is not None:
@@ -970,7 +1028,7 @@ class App(DirectObject):
         self.mode='scale'
         self.gui.fade_in('button_scale')
         self.gui.fade_out(['button_rotate','button_move'])
-        self.gui.show_hide(['button_x','button_y','button_z','button_local'])
+        self.gui.show_hide(['button_x','button_y','button_z','button_local'],['button_snap','input_snap'])
         self.active_axis=['x','y','z']
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
@@ -997,7 +1055,7 @@ class App(DirectObject):
     def move_pivot(self, node, pos):
         for child in node.get_children():
             child.set_pos(-pos)
-        node.set_pos(pos)
+        node.set_pos(node.get_pos(render)+pos)
         node.set_python_tag('pivot_pos', pos)
         self.axis.set_pos(node.get_pos(render))
         self.update_ui_for_node(node)
@@ -1024,7 +1082,7 @@ class App(DirectObject):
         ''' Enable/disable an axis (x,y or z) for movement or rotation,
         only 2 axis can be active in move mode and 1 in rotate mode,
         excess axis will be disabled automatically'''
-        if self.mode != 'select':
+        if self.mode not in ('select','scale'):
             if axis in self.active_axis:
                 self.active_axis.pop(self.active_axis.index(axis))
                 self.axis.find(axis).hide()
@@ -1128,6 +1186,8 @@ class App(DirectObject):
                                           render.get_relative_point(base.camera, far_point)):
                 if self.mode == 'move':
                     axis_pos=render.get_relative_point(self.axis, pos3d)
+                    if self.snap:
+                        axis_pos=Point3(*(self.snap_pos*round(i/self.snap_pos) for i in axis_pos))
                     if self.last_axis_pos is None:
                         self.last_axis_pos=axis_pos
                         return task.again
@@ -1163,6 +1223,14 @@ class App(DirectObject):
                     #the angle is positive if you can rotate last_vec to vec clockwise (I assume along
                     #the smallest possible arc), when looking in the direction of the plane normal
                     angle=self.last_vec.signed_angle_deg(vec, self.plane.get_normal())
+                    if self.snap:
+                        if abs(angle) < min(0.2, self.snap_angle/0.25):
+                            if angle<0:
+                                angle=-self.snap_angle
+                            if angle>0:
+                                angle=self.snap_angle
+                        else:
+                            angle=self.snap_angle*round(angle/self.snap_angle)
                     q=Quat()
                     q.set_from_axis_angle(angle, self.plane.get_normal())
                     q_model = node.get_quat()
