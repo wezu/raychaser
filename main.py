@@ -70,7 +70,6 @@ class App(DirectObject):
     def __init__(self):
         builtins.app=self
         #basic stuff
-        sys.setrecursionlimit(10000)
         self.base = ShowBase.ShowBase()
         self.base.disableMouse()
         self.base.set_background_color(0.1, 0.1, 0.1)
@@ -106,6 +105,7 @@ class App(DirectObject):
             self.objects=[]
             self.scene=render.attach_new_node('scene')
             self.max_points=ConfigVariableInt('max-points', 1000).get_value()
+            sys.setrecursionlimit(self.max_points*100)
 
             #cam mask
             base.cam.node().set_camera_mask(self.camera_mask)
@@ -307,7 +307,12 @@ class App(DirectObject):
                                       hpr=item['hpr'],
                                       scale=item['scale'],
                                       angle_h=item['tags']['angle_h'],
-                                      angle_v=item['tags']['angle_v']
+                                      angle_v=item['tags']['angle_v'],
+                                      texture=item['tags']['texture'],
+                                      sample_v=item['tags']['sample_v'],
+                                      sample_h=item['tags']['sample_h'],
+                                      proj_w=item['tags']['proj_w'],
+                                      proj_h=item['tags']['proj_h']
                                       )
                     else:
                         self.load_object(model=item['tags']['model_file'],
@@ -375,13 +380,14 @@ class App(DirectObject):
         i=0
         for fn in os.listdir(dir):
             f=Filename(fn)
-            if os.path.isdir(os.path.join(dir,fn)):
+            full_path=os.path.join(dir,fn)
+            if os.path.isdir(full_path):
                 i+=1
                 self.img_buttons.append('button_img_'+str(i))
                 self.gui.button(txt='<DIR>{name:.45}'.format(name=f.getBasename()),
                                    mono_font=True,
                                    align='left',
-                                   cmd="app.find_images('"+dir+'/'+fn+"')",
+                                   cmd="app.find_images('"+str(Filename().from_os_specific(full_path))+"')",
                                    width=384,
                                    pos=(16,i*32),
                                    name='button_img_'+str(i),
@@ -768,6 +774,14 @@ class App(DirectObject):
             node.set_python_tag('angle_h', min(89.9, max(-89.9, value)))
         elif txt=='angle_v':
             node.set_python_tag('angle_v', min(89.9, max(-89.9, value)))
+        elif txt=='sample_h':
+            node.set_python_tag('sample_h',  max(2, int(value)))
+        elif txt=='sample_v':
+            node.set_python_tag('sample_v',  max(2, int(value)))
+        elif txt=='proj_w':
+            node.set_python_tag('proj_w',  value)
+        elif txt=='proj_h':
+            node.set_python_tag('proj_h',  value)
         elif txt=='pivot_x':
             pivot_pos=node.get_python_tag('pivot_pos')
             pivot_pos.x=value
@@ -866,6 +880,10 @@ class App(DirectObject):
                 self.gui.show_hide('projector_prop_frame',['mesh_prop_frame', 'ray_prop_frame'])
                 self.gui['proj_angle_h_input'].set('{0:.2f}'.format(node.get_python_tag('angle_h')))
                 self.gui['proj_angle_v_input'].set('{0:.2f}'.format(node.get_python_tag('angle_v')))
+                self.gui['proj_sample_h_input'].set('{0}'.format(node.get_python_tag('sample_h')))
+                self.gui['proj_sample_v_input'].set('{0}'.format(node.get_python_tag('sample_v')))
+                self.gui['proj_width_input'].set('{0:.2f}'.format(node.get_python_tag('proj_w')))
+                self.gui['proj_height_input'].set('{0:.2f}'.format(node.get_python_tag('proj_h')))
             else:
                 self.gui.show_hide('mesh_prop_frame', ['ray_prop_frame','projector_prop_frame'])
                 mat_name=node.get_python_tag('material_name')
@@ -988,7 +1006,8 @@ class App(DirectObject):
         self.mode='move'
         self.gui.fade_in('button_move')
         self.gui.fade_out(['button_rotate','button_scale'])
-        self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'])
+        self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'],
+                            ['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'])
         self.gui['input_snap'].set('{:.2f}'.format(self.snap_pos))
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
@@ -1008,7 +1027,8 @@ class App(DirectObject):
         self.mode='rotate'
         self.gui.fade_in('button_rotate')
         self.gui.fade_out(['button_move','button_scale'])
-        self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'])
+        self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'],
+                            ['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'])
         self.gui['input_snap'].set('{:.2f}'.format(self.snap_angle))
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
@@ -1028,7 +1048,9 @@ class App(DirectObject):
         self.mode='scale'
         self.gui.fade_in('button_scale')
         self.gui.fade_out(['button_rotate','button_move'])
-        self.gui.show_hide(['button_x','button_y','button_z','button_local'],['button_snap','input_snap'])
+        self.gui.show_hide(['button_x','button_y','button_z','button_local'],
+                            ['button_snap','input_snap', 'button_cam_reset',
+                            'button_cam_ortho','button_cam_gimbal','button_cam_pan'])
         self.active_axis=['x','y','z']
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
@@ -1428,32 +1450,107 @@ class App(DirectObject):
                 line.set_color(color, 1)
                 self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
 
+    def make_deformed_quad(self, points):
+        format = GeomVertexFormat.getV3t2()
+        vdata = GeomVertexData('quad', format, Geom.UHDynamic)
+        vertex = GeomVertexWriter(vdata, 'vertex')
+        texcoord = GeomVertexWriter(vdata, 'texcoord')
+
+        rows=max(points, key=lambda item:item[0])[0]
+        columns=max(points, key=lambda item:item[1])[1]
+
+        num_rows=0
+        for (x, y), point in points.items():
+            vertex.add_data3(point)
+            texcoord.add_data2(x/rows, y/columns)
+            num_rows+=1
+
+        geom = Geom(vdata)
+        tris = GeomTriangles(Geom.UHDynamic)
+        for i in range(num_rows-2-columns):
+            tris.add_vertices(i+0, i+0+1+columns, i+0+2+columns)
+            tris.add_vertices(i+1, i+0, i+0+2+columns)
+        geom.add_primitive(tris)
+        snode =GeomNode('quad')
+        snode.add_geom(geom)
+        return render.attach_new_node(snode)
+
+
     def draw_projection(self, node_id, points):
         node=self.objects[node_id]
         if node is None:
             return
-        final_points=[]
-        for n, point in enumerate(points):
-            if point is None and n>0:
-                final_points.append(points[n-1])
 
+        if node.has_python_tag('line_color'):
+            color=node.get_python_tag('line_color')
+        else:
+            color=self.colors.new_color()
+            node.set_python_tag('line_color', color)
+
+        if node.has_python_tag('line'):
+            node.get_python_tag('line').remove_node()
         if node.has_python_tag('quad'):
             node.get_python_tag('quad').remove_node()
 
-        if len(final_points)>3:
-            cm = CardMaker("quad")
-            cm.set_frame(final_points[0],final_points[2], final_points[3], final_points[1])
-            quad= NodePath(cm.generate())
-            quad.wrt_reparent_to(node)
-            quad.set_two_sided(True)
-            quad.set_depth_test(False)
-            quad.set_depth_write(True)
-            quad.set_bin('fixed', 10)
-            quad.set_depth_offset(1)
-            quad.show_through(self.camera_mask)
-            tex=node.get_python_tag('texture')
-            quad.set_texture(loader.load_texture(tex), 1)
-            node.set_python_tag('quad', quad)
+        #find corners
+        start_pos=node.get_pos()
+        for child in node.get_children():
+            if isinstance(child.node(), ModelRoot):
+                start_pos=child.get_pos(render)
+                break
+        rows=node.get_python_tag('sample_h')
+        columns=node.get_python_tag('sample_v')
+        corner_rays=((0,0),
+                     (0,columns-1),
+                     (rows-1, 0),
+                     (rows-1,columns-1)
+                    )
+        line=node.get_python_tag('line')
+        #color=line.get_color()
+        line.remove_node()
+        l=LineSegs()
+        l.set_thickness(2.0)
+        #l.move_to(node.get_pos(render))
+        #start point may differ because of pivot shift
+        for child in node.get_children():
+            if isinstance(child.node(), ModelRoot):
+                l.move_to(child.get_pos(render))
+                break
+        last_ray_id=points[0][1]
+        for (point, ray_id) in points:
+            if point:
+                if ray_id in corner_rays:
+                    if ray_id!=last_ray_id:
+                        last_ray_id=ray_id
+                        l.move_to(point)
+                    else:
+                        l.draw_to(point)
+
+        end_points={}
+        for (point, ray_id) in points:
+            if point:
+                end_points[ray_id]=point
+
+        line=render.attach_new_node(l.create())
+        #line.set_shader(self.line_shader)
+        line.set_color(color, 1)
+        line.set_transparency(TransparencyAttrib.M_multisample)
+        line.set_antialias(AntialiasAttrib.MLine)
+        node.set_python_tag('line', line)
+        line.wrt_reparent_to(node)
+        line.show_through(self.camera_mask)
+        line.hide(self.select_mask)
+
+        quad=self.make_deformed_quad(end_points)
+        quad.wrt_reparent_to(node)
+        node.set_python_tag('quad', quad)
+        tex=loader.load_texture(node.get_python_tag('texture'))
+        quad.set_texture(tex, 1)
+        quad.set_depth_offset(1)
+        quad.set_depth_test(False)
+        quad.set_bin('fixed', 100)
+        #quad.set_render_mode_wireframe()
+
 
     def draw_line(self, node_id, points, color=None):
         '''Draw lines for node_id '''
@@ -1466,6 +1563,7 @@ class App(DirectObject):
             else:
                 color=self.colors.new_color()
                 node.set_python_tag('line_color', color)
+
         line=node.get_python_tag('line')
         #color=line.get_color()
         line.remove_node()
@@ -1477,15 +1575,15 @@ class App(DirectObject):
             if isinstance(child.node(), ModelRoot):
                 l.move_to(child.get_pos(render))
                 break
-        move_next=False
-        for point in points:
-            if point is None:
-                move_next=True
-            elif move_next:
-                l.move_to(point)
-                move_next=False
-            else:
-                l.draw_to(point)
+
+        last_ray_id=points[0][1]
+        for (point, ray_id) in points:
+            if point:
+                if ray_id!=last_ray_id:
+                    last_ray_id=ray_id
+                    l.move_to(point)
+                else:
+                    l.draw_to(point)
         line=render.attach_new_node(l.create())
         #line.set_shader(self.line_shader)
 
@@ -1519,9 +1617,10 @@ class App(DirectObject):
             node_id, points = self.out_que.popleft()
             node=self.objects[node_id]
             if node and points:
-                self.draw_line(node_id, points)
                 if node.get_python_tag('type')=='projector':
                     self.draw_projection(node_id, points)
+                else:
+                    self.draw_line(node_id, points)
         return task.again
 
     def _get_ray_vector(self, h, p):
@@ -1564,10 +1663,12 @@ class App(DirectObject):
                     column_offset=node.get_python_tag('column_offset')
                 elif node.get_python_tag('type')=='projector':
                     wavelength=550
-                    rows=2
-                    columns=2
-                    row_offset=1
-                    column_offset=1
+                    rows=node.get_python_tag('sample_h')
+                    columns=node.get_python_tag('sample_v')
+                    w=node.get_python_tag('proj_w')
+                    h=node.get_python_tag('proj_h')
+                    row_offset=w/(rows-1.0)
+                    column_offset=h/(columns-1.0)
                 points=[]
                 q=Quat()
                 for child in node.get_children():
@@ -1591,7 +1692,7 @@ class App(DirectObject):
                         v=self._get_ray_vector(h, p)
                         v*=1000.0 #target a point 1000.0 units away
                         target=render.get_relative_vector(node, v)+origin
-                        self.trace_ray(origin, wavelength, origin, target, 1.0, points, [])
+                        self.trace_ray((row, column),origin, wavelength, origin, target, 1.0, points, [])
                 self.out_que.append((node_id, points))
                 sleep_time=0
             time.sleep(sleep_time)
@@ -1600,10 +1701,10 @@ class App(DirectObject):
         '''Adds a node to the raytracing que'''
         self.in_que.append(node_id)
 
-    def trace_ray(self, start_pos, wavelength, origin, target, last_ior, points=[], split=[]):
+    def trace_ray(self, ray_id, start_pos, wavelength, origin, target, last_ior, points=[], split=[]):
         if points:
-            if points[-1] is None:
-                points.append(start_pos)
+            if points[-1][0] is None:
+                points.append((start_pos, ray_id))
                 #print('insert start')
         if len(points)>self.max_points:
             self.print_txt('To many points!')
@@ -1611,7 +1712,7 @@ class App(DirectObject):
         max_ray_length=1000.0
         hit=self._ray(origin, target)
         if hit.has_hit:
-            points.append(hit.pos)
+            points.append((hit.pos, ray_id))
             if last_ior == 1.0:
                 ior=hit.node.get_python_tag('material').n(wavelength)
             elif hit.next_node is None:
@@ -1630,12 +1731,12 @@ class App(DirectObject):
             if object_type=='reflect':
                 reflected=self.reflect(target.normalized(), hit.normal)
                 target=reflected*max_ray_length
-                self.trace_ray(start_pos, wavelength, hit.pos, target, 1.0, points, split)
+                self.trace_ray(ray_id, start_pos, wavelength, hit.pos, target, 1.0, points, split)
             elif object_type=='refract':
                 refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
                 #if not refracted.is_internal:
                 target=refracted.vector*max_ray_length
-                self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
+                self.trace_ray(ray_id, start_pos, wavelength, hit.pos, target, ior, points, split)
                 #else:
                 #    points.append(None)
             elif object_type=='beamsplit':
@@ -1644,26 +1745,26 @@ class App(DirectObject):
                 refracted=self.refract(target.normalized(), hit.normal, last_ior, ior)
                 #if not refracted.is_internal:
                 target=refracted.vector*max_ray_length
-                self.trace_ray(start_pos, wavelength, hit.pos, target, ior, points, split)
+                self.trace_ray(ray_id, start_pos, wavelength, hit.pos, target, ior, points, split)
                 #else:
                 #    points.append(None)
             else:
-                points.append(None)
+                points.append((None, ray_id))
         else:
             #print(hit)
-            points.append(hit.pos)
+            points.append((hit.pos, ray_id))
             if split:
                 I, N, origin= split.pop()
-                points.append(None)
-                points.append(origin)
+                points.append((None, ray_id))
+                points.append((origin, ray_id))
                 reflected=self.reflect(I, N)
                 target=reflected*max_ray_length
-                self.trace_ray(start_pos, wavelength, origin, target, 1.0, points, split)
+                self.trace_ray(ray_id, start_pos, wavelength, origin, target, 1.0, points, split)
             else:
-                if points[-1] is None:
-                    points.append(start_pos)
+                if points[-1][0] is None:
+                    points.append((start_pos, ray_id))
                 else:
-                    points.append(None)
+                    points.append((None, ray_id))
                 #points.append(start_pos)
                 #print('insert end')
 
@@ -1821,7 +1922,9 @@ class App(DirectObject):
                 node.set_scale(max(x, 0.05), 1.0, max(z, 0.05))
 
     def make_projector(self, color=None, wavelength=None, model_name=None,
-                pos=None, hpr=None, scale=None, angle_h=22.5, angle_v=22.5):
+                pos=None, hpr=None, scale=None, angle_h=22.5, angle_v=22.5,
+                texture='images/test1.png',sample_v=8, sample_h=8,
+                proj_w=1.0, proj_h=1.0):
         '''Creates a new projector object'''
         root=self.scene.attach_new_node('project')
         model=loader.load_model('data/box.egg')
@@ -1836,6 +1939,10 @@ class App(DirectObject):
         root.set_python_tag('type', 'projector')
         root.set_python_tag('angle_h', angle_h)
         root.set_python_tag('angle_v', angle_v)
+        root.set_python_tag('sample_v',  sample_v)
+        root.set_python_tag('sample_h',  sample_h)
+        root.set_python_tag('proj_w', proj_w)
+        root.set_python_tag('proj_h', proj_h)
         root.set_python_tag('pivot_pos', Point3(0,0,0))
         root.set_python_tag('pivot_hpr', Point3(0,0,0))
         root.set_python_tag('texture', 'images/test1.png')

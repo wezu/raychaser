@@ -116,18 +116,20 @@
          "scroll":0,
          "autoresize":1,
          "text":[
-                {"txt":"Width, Height:\n\n\nAngle:\nHorizontal, Vertical\n\n\nImage:\n\n\nRay color:", "pos":[0,8], "big_font":0}
+                {"txt":"Width, Height:\n\n\nAngle:\nHorizontal, Vertical\n\n\nNumber of samples:\nHorizontal, Vertical\n\n\nImage:\n\n\nRay color:", "pos":[0,8], "big_font":0}
                 ],
          "input":[
                     {"txt":"0.0","width":96, "pos":[32,34], "name":"proj_width_input", "cmd":"app.apply_input(txt, ['proj_w'])"},
                     {"txt":"0.0","width":96, "pos":[128,34], "name":"proj_height_input", "cmd":"app.apply_input(txt, ['proj_h'])"},
                     {"txt":"0.0","width":96, "pos":[32,100], "name":"proj_angle_h_input", "cmd":"app.apply_input(txt, ['angle_h'])"},
                     {"txt":"0.0","width":96, "pos":[128,100], "name":"proj_angle_v_input", "cmd":"app.apply_input(txt, ['angle_v'])"},
-                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,210], "name":"proj_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"}
+                    {"txt":"8","width":96, "pos":[32,174], "name":"proj_sample_h_input", "cmd":"app.apply_input(txt, ['sample_h'])"},
+                    {"txt":"8","width":96, "pos":[128,174], "name":"proj_sample_v_input", "cmd":"app.apply_input(txt, ['sample_v'])"},
+                    {"txt":"1.0, 0.0, 0.0","width":224, "pos":[16,282], "name":"proj_color_input", "cmd":"app.apply_input(txt, ['r,g,b'])"}
                 ],
          "button":  [
-                    {"name":"button_proj_img","txt":"Set Image...","cmd":"app.gui.show_hide('file_list_frame')", "width":224, "pos":[16,158]},
-                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,244]}
+                    {"name":"button_proj_img","txt":"Set Image...","cmd":"app.gui.show_hide('file_list_frame')", "width":224, "pos":[16,230]},
+                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,314]}
                     ]
         },
         {"name":"file_list_frame",
@@ -259,11 +261,11 @@
         "button_help":{"txt":"Help", "cmd":"app.show_help()", "width":96, "pos":[310,0], "parent":"top_left"},
 
 
-        "button_camera":{"pos":[-296,-32], "txt":"Camera...", "cmd":"app.gui.toggle(['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'], ['prop_frame'])", "width":160, "parent":"bottom_right"},
+        "button_camera":{"pos":[-296,-32], "txt":"Camera", "cmd":"app.gui.toggle(['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'], ['prop_frame'])", "width":160, "parent":"bottom_right"},
 
         "button_cam_reset":{"txt":"Reset", "cmd":"app.reset_cam()", "width":160, "pos":[-296,-62], "parent":"bottom_right"},
         "button_cam_ortho":{"txt":"Orthographic", "cmd":"app.ortho_cam()", "width":160, "pos":[-296,-92], "parent":"bottom_right"},
-        "button_cam_gimbal":{"txt":"Show focus", "cmd":"app.show_cam_gimbal()", "width":160, "pos":[-296,-122], "parent":"bottom_right"},
+        "button_cam_gimbal":{"txt":"Focus Widget", "cmd":"app.show_cam_gimbal()", "width":160, "pos":[-296,-122], "parent":"bottom_right"},
         "button_cam_pan":{"txt":"Relative pan", "cmd":"app.cam_relative_pan()", "width":160, "pos":[-296,-152], "parent":"bottom_right"},
 
 
