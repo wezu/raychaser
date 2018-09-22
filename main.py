@@ -139,6 +139,7 @@ class App(DirectObject):
             self.cam_driver.gimbal.set_p(45)
             self._setup_select_buff()
             self.ortho_cam(True)
+            self.cam_relative_pan(False)
 
             self.cam_circle=self.make_circle(segments=16, thickness=1.5, radius=0.25)
             self.cam_circle.reparent_to(self.cam_driver.node)
@@ -704,7 +705,8 @@ class App(DirectObject):
             node=self.objects[object_id]
             if node is None:
                 return
-        pos=Vec3(node.get_x(render), node.get_y(render),self.cam_driver.node.get_z(render))
+        #pos=Vec3(node.get_x(render), node.get_y(render),self.cam_driver.node.get_z(render))
+        pos=node.get_pos(render)
         LerpPosInterval(self.cam_driver.node, 0.25, pos).start()
 
     def do_nill(self, *args, **kwargs):
@@ -992,7 +994,8 @@ class App(DirectObject):
                                'button_cam_reset',
                                'button_cam_ortho',
                                'button_cam_gimbal',
-                               'button_cam_pan'])
+                               'button_cam_pan',
+                               'button_cam_select'])
         self.axis.find('x').hide()
         self.axis.find('y').hide()
         self.axis.find('z').hide()
@@ -1007,7 +1010,7 @@ class App(DirectObject):
         self.gui.fade_in('button_move')
         self.gui.fade_out(['button_rotate','button_scale'])
         self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'],
-                            ['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'])
+                            ['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan','button_cam_select'])
         self.gui['input_snap'].set('{:.2f}'.format(self.snap_pos))
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
@@ -1028,7 +1031,7 @@ class App(DirectObject):
         self.gui.fade_in('button_rotate')
         self.gui.fade_out(['button_move','button_scale'])
         self.gui.show_hide(['button_x','button_y','button_z','button_local','button_snap','input_snap'],
-                            ['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'])
+                            ['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan','button_cam_select'])
         self.gui['input_snap'].set('{:.2f}'.format(self.snap_angle))
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
@@ -1050,7 +1053,7 @@ class App(DirectObject):
         self.gui.fade_out(['button_rotate','button_move'])
         self.gui.show_hide(['button_x','button_y','button_z','button_local'],
                             ['button_snap','input_snap', 'button_cam_reset',
-                            'button_cam_ortho','button_cam_gimbal','button_cam_pan'])
+                            'button_cam_ortho','button_cam_gimbal','button_cam_pan','button_cam_select'])
         self.active_axis=['x','y','z']
         for axis in self.active_axis:
             self.gui.fade_in('button_'+axis)
@@ -1456,20 +1459,24 @@ class App(DirectObject):
         vertex = GeomVertexWriter(vdata, 'vertex')
         texcoord = GeomVertexWriter(vdata, 'texcoord')
 
-        rows=max(points, key=lambda item:item[0])[0]
-        columns=max(points, key=lambda item:item[1])[1]
+        rows=max(points, key=lambda item:item[0])[0]+1
+        columns=max(points, key=lambda item:item[1])[1]+1
 
         num_rows=0
         for (x, y), point in points.items():
+            #print((x,y),':',point)
             vertex.add_data3(point)
-            texcoord.add_data2(x/rows, y/columns)
+            texcoord.add_data2(x/(rows-1), y/(columns-1))
             num_rows+=1
+
+        #print(rows, columns, num_rows)
 
         geom = Geom(vdata)
         tris = GeomTriangles(Geom.UHDynamic)
-        for i in range(num_rows-2-columns):
-            tris.add_vertices(i+0, i+0+1+columns, i+0+2+columns)
-            tris.add_vertices(i+1, i+0, i+0+2+columns)
+        for i in range(num_rows-1-columns):
+            if (i+1)% columns !=0:
+                tris.add_vertices(i, i+columns, i+1+columns)
+                tris.add_vertices(i+1, i, i+1+columns)
         geom.add_primitive(tris)
         snode =GeomNode('quad')
         snode.add_geom(geom)
@@ -1505,9 +1512,11 @@ class App(DirectObject):
                      (rows-1, 0),
                      (rows-1,columns-1)
                     )
-        line=node.get_python_tag('line')
-        #color=line.get_color()
-        line.remove_node()
+        try:
+            line=node.get_python_tag('line')
+            line.remove_node()
+        except:
+            pass
         l=LineSegs()
         l.set_thickness(2.0)
         #l.move_to(node.get_pos(render))
@@ -1541,14 +1550,22 @@ class App(DirectObject):
         line.show_through(self.camera_mask)
         line.hide(self.select_mask)
 
+        try:
+            quad=node.get_python_tag('quad')
+            quad.remove_node()
+        except:
+            pass
         quad=self.make_deformed_quad(end_points)
         quad.wrt_reparent_to(node)
         node.set_python_tag('quad', quad)
         tex=loader.load_texture(node.get_python_tag('texture'))
+        tex.set_anisotropic_degree(2)
         quad.set_texture(tex, 1)
-        quad.set_depth_offset(1)
+        #quad.set_depth_offset(1)
         quad.set_depth_test(False)
         quad.set_bin('fixed', 100)
+        quad.set_two_sided(True)
+        quad.set_transparency(TransparencyAttrib.M_none)
         #quad.set_render_mode_wireframe()
 
 
@@ -1919,6 +1936,10 @@ class App(DirectObject):
                 z=node.get_python_tag('columns')-1
                 x*=node.get_python_tag('row_offset')
                 z*=node.get_python_tag('column_offset')
+                node.set_scale(max(x, 0.05), 1.0, max(z, 0.05))
+            elif node.get_python_tag('type')=='projector':
+                x=node.get_python_tag('proj_w')
+                z=node.get_python_tag('proj_h')
                 node.set_scale(max(x, 0.05), 1.0, max(z, 0.05))
 
     def make_projector(self, color=None, wavelength=None, model_name=None,

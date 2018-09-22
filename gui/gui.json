@@ -261,12 +261,13 @@
         "button_help":{"txt":"Help", "cmd":"app.show_help()", "width":96, "pos":[310,0], "parent":"top_left"},
 
 
-        "button_camera":{"pos":[-296,-32], "txt":"Camera", "cmd":"app.gui.toggle(['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan'], ['prop_frame'])", "width":160, "parent":"bottom_right"},
+        "button_camera":{"pos":[-296,-32], "txt":"Camera", "cmd":"app.gui.toggle(['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan', 'button_cam_select'], ['prop_frame'])", "width":160, "parent":"bottom_right"},
 
         "button_cam_reset":{"txt":"Reset", "cmd":"app.reset_cam()", "width":160, "pos":[-296,-62], "parent":"bottom_right"},
         "button_cam_ortho":{"txt":"Orthographic", "cmd":"app.ortho_cam()", "width":160, "pos":[-296,-92], "parent":"bottom_right"},
         "button_cam_gimbal":{"txt":"Focus Widget", "cmd":"app.show_cam_gimbal()", "width":160, "pos":[-296,-122], "parent":"bottom_right"},
         "button_cam_pan":{"txt":"Relative pan", "cmd":"app.cam_relative_pan()", "width":160, "pos":[-296,-152], "parent":"bottom_right"},
+        "button_cam_select":{"txt":"Move to object", "cmd":"app.center_camera()", "width":160, "pos":[-296,-182], "parent":"bottom_right"},
 
 
         "button_grid":{"txt":"Grid", "cmd":"app.hide_grid()", "width":96, "pos":[-148,-32], "parent":"bottom_right"},
