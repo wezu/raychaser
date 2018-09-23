@@ -120,6 +120,8 @@ class App(DirectObject):
             self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
             self.set_snap(False)
             self.gui.resize_callback.append(self.on_resize)
+            self.load_help_from_txt('help.txt')
+
             #use a better camera controller
             cam_speed=ConfigVariableDouble('camera-speed', 1.0).get_value()
             cam_zoom_speed=ConfigVariableDouble('camera-zoom-speed', 1.0).get_value()
@@ -180,7 +182,7 @@ class App(DirectObject):
             self.axis.find('y').hide()
             self.axis.find('z').hide()
             #visual aid
-            self.circle=self.make_circle()
+            self.circle=self.make_circle(line=False)
             self.circle.hide()
             self.circle.set_light_off()
             self.circle.set_depth_test(False)
@@ -245,8 +247,33 @@ class App(DirectObject):
         except:
             pass
 
-    def show_help(self):
-        pass
+    def load_help_from_txt(self, txt_file):
+        '''Loads the text for the in-game help
+        '''
+        self.help_dict={}
+        topic=None
+        txt=''
+        with open(txt_file,'r') as f:
+            for line in f.readlines():
+                if line.startswith('#'):
+                    if topic:
+                        self.help_dict[topic]=txt
+                        txt=''
+                    topic=line.strip('#').strip()
+                else:
+                    txt+=line
+            else:
+                if topic:
+                    self.help_dict[topic]=txt
+                    topic=line.strip('#').strip()
+
+    def show_help(self, topic):
+        '''Shows the help text'''
+        self.gui.show_hide('help_txt_frame','help_frame')
+        if topic in self.help_dict:
+            self.gui['help_txt_frame_verticalScroll']['value']=1
+            self.gui['help_txt_header'].set_text(topic)
+            self.gui['help_txt'].set_text(self.help_dict[topic])
 
     def reset_cam(self):
         '''Reset the camera pos and hpr'''
@@ -255,9 +282,11 @@ class App(DirectObject):
         self.cam_driver.gimbal.set_p(45)
 
     def on_resize(self):
+        '''Function run when the main window is resized '''
         render.set_shader_input("screen_size", Vec2(*base.get_size()))
 
     def save_scene(self):
+        '''Save the scene to a .json file, the name for the file is taken from gui['save_path_input']  '''
         target_file=self.gui['save_path_input'].get()
         scene=[]
         for node in self.objects:
@@ -283,6 +312,8 @@ class App(DirectObject):
         self.find_scenes('scenes')
 
     def load_scene(self, file_name):
+        '''Load a scene from a  'file_name' json file'''
+        ## TODO: missing properties - gloss, transparency, pivot pos...
         self.clear_scene()
         if os.path.exists(file_name):
             with open(file_name) as f:
@@ -352,6 +383,7 @@ class App(DirectObject):
             self.gui.fade_in('button_bam')
 
     def load_image(self, path):
+        '''Load an image from path, apply it to the currently selected projector object'''
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
             node.set_python_tag('texture', path)
@@ -362,6 +394,7 @@ class App(DirectObject):
             self.trace_ray_in_thread(self.selected_id)
 
     def find_images(self, dir):
+        '''Creates buttons for all images found in dir '''
         dir=str(Filename(dir).to_os_specific())
         self.gui['img_path_txt'].set_text('{:.50}'.format(dir))
         for button_name in self.img_buttons:
@@ -406,6 +439,7 @@ class App(DirectObject):
                                    parent='file_list_frame_canvas')
 
     def find_scenes(self, dir):
+        ''' Find all json files in dir and make a button for each file'''
         for button_name in self.scene_buttons:
             self.gui.remove_button(button_name)
         self.scene_buttons=[]
@@ -449,6 +483,7 @@ class App(DirectObject):
         self.gui.sort_buttons('model_frame_canvas', 'type', False)
 
     def cam_relative_pan(self, relative=None):
+        '''GUI callback -Change camera movement scheme '''
         if relative is None:
             self.cam_driver.relative_pan = not self.cam_driver.relative_pan
         else:
@@ -459,6 +494,7 @@ class App(DirectObject):
             self.gui.fade_out('button_cam_pan')
 
     def show_cam_gimbal(self, show=None):
+        '''GUI callback -Show/hide camera focus point thingy '''
         is_hidden=self.cam_circle.is_hidden()
         if show is None:
             if is_hidden:
@@ -499,6 +535,7 @@ class App(DirectObject):
             self.gui.fade_out('button_cam_ortho')
 
     def set_reflect(self):
+        '''Toggle object properties'''
         if self.selected_id is None:
             return
         node=self.objects[self.selected_id]
@@ -525,6 +562,7 @@ class App(DirectObject):
             self.do_raytrace()
 
     def set_refract(self):
+        '''Toggle object properties'''
         if self.selected_id is None:
             return
         node=self.objects[self.selected_id]
@@ -698,16 +736,15 @@ class App(DirectObject):
             self.do_raytrace()
 
     def center_camera(self, object_id=None):
-        '''move  the camera to the object, sort of...  '''
-        if object_id is None:
+        '''Move the camera near the object'''
+        if object_id is None and self.selected_id is not None:
             object_id =self.selected_id
-        if object_id <= len(self.objects):
-            node=self.objects[object_id]
-            if node is None:
-                return
-        #pos=Vec3(node.get_x(render), node.get_y(render),self.cam_driver.node.get_z(render))
-        pos=node.get_pos(render)
-        LerpPosInterval(self.cam_driver.node, 0.25, pos).start()
+        if object_id is not None:
+            if object_id <= len(self.objects):
+                node=self.objects[object_id]
+                if node:
+                    pos=node.get_pos(render)
+                    LerpPosInterval(self.cam_driver.node, 0.25, pos).start()
 
     def do_nill(self, *args, **kwargs):
         '''dummy function, does nothing  '''
@@ -968,6 +1005,7 @@ class App(DirectObject):
         self.update_ui_for_node(node)
 
     def set_snap(self, on=None):
+        ''' Toggle snap '''
         if on is None:
             self.snap=not self.snap
         else:
@@ -1274,8 +1312,6 @@ class App(DirectObject):
                     delta_distance= self.last_scale-distance
                     self.last_scale=distance
                     node.set_scale(node.get_scale(render)-Vec3(delta_distance))
-
-
         return task.again
 
     def _on_click(self):
@@ -1454,6 +1490,7 @@ class App(DirectObject):
                 self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
 
     def make_deformed_quad(self, points):
+        '''Creates a mesh from a dict of points '''
         format = GeomVertexFormat.getV3t2()
         vdata = GeomVertexData('quad', format, Geom.UHDynamic)
         vertex = GeomVertexWriter(vdata, 'vertex')
@@ -1464,12 +1501,9 @@ class App(DirectObject):
 
         num_rows=0
         for (x, y), point in points.items():
-            #print((x,y),':',point)
             vertex.add_data3(point)
             texcoord.add_data2(x/(rows-1), y/(columns-1))
             num_rows+=1
-
-        #print(rows, columns, num_rows)
 
         geom = Geom(vdata)
         tris = GeomTriangles(Geom.UHDynamic)

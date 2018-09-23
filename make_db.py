@@ -1,3 +1,7 @@
+'''
+This script generates a sqlite database that is needed for mat_spy
+'''
+
 import sqlite3
 import opticalmaterialspy as mat_spy
 
@@ -32,10 +36,10 @@ c = conn.cursor()
 c.execute('''CREATE TABLE materials
              (material TEXT, wavelength INTEGER, ior REAL)''')
 
-            
+
 for name, material in materials.items():
     print("material:", material)
-    for wavelength in range(300, 5000):    
+    for wavelength in range(300, 5000):
         if wavelength%50.0==0:
             print('wavelength:', wavelength)
         ior=material.n(wavelength)

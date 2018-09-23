@@ -1,0 +1,50 @@
+# General info
+Features:
+Raychaser is an application build to visualize optical phenomena such as refraction and reflection in a 3D environment. It allows to import meshes (in various popular file formats via Assimp) to act as mirrors(reflect), lenses(refract), beam splitters (reflect and refract) or screens (absorb). One can create light rays (or arrays of multiple rays) and projectors. Each object can have a custom Index Of Refraction (IOR) or a real world material, rays can have specific wavelengths. Every object can be freely manipulated (moved, rotated, scaled) and viewed from any angle. The application also allows saving and loading of scenes.
+
+User Interface:
+The buttons in the upper left corner are associated with changing the scene (save, load, create or select objects). The buttons in the lower left corner are associated with manipulating objects (move, rotate, scale). The buttons on the lower right are associated with the view (grid, camera options). Object properties are always shown on the right side of the screen (when on object is selected).
+
+Widgets with white text are input fields, you can click on them to type in values. Input fields that take numerical values are interpreted, that means you can type in simple mathematical expressions (eg. 1+2*3) and skip decimals (the field may display for example 3.00, but you may simply enter 3). Double clicking on an input field will erase the old value. Values are applied when you click on a different input field or press Enter.
+
+Some buttons are toggleable. Grey text indicates that the button (feature) is in Off state. For example if the Grid button is grey then the grid is hidden, if the button has green text then the grid is visible.
+
+# Camera control
+Camera Menu
+The camera menu is accessible by clicking the Camera button near on the bottom left of the window. The option there are:
+
+Move to object - clicking this button will move the camera to the currently selected object (if an object is selected).
+
+Relative pan - When this option is off, the camera will only move on the XY-plane when using the mouse to move the camera, that is moving the mouse up or down will move the camera forward and back. When this option is on, the motion will be relative to the camera itself. By default this option is off.
+
+Focus Widget - Clicking this option will either show or hide the Focus Widget - a small, greyish circle showing the point in space around which the camera orbits.
+
+Orographic - Clicking this option will switch between orographic and perspective camera view mode.
+
+Reset - This option will reset the position and orientation of the camera.
+
+Keyboard controls:
+W - move camera forward
+A - move camera left
+S - move camera back
+D - move camera right
+Q - move camera up
+Z - move camera down
+UP ARROW - view from top
+DOWN ARROW - view from bottom
+LEFT ARROW - view from left
+RIGHT ARROW - view from right
+HOME  - view from front
+END - view from back
+
+Mouse control:
+RIGHT MOUSE BUTTON - hold and move mouse to rotate camera
+SHIFT + LEFT MOUSE BUTTON - hold and move mouse to rotate camera
+MOUSE WHEEL - camera zoom in/out
+
+# Creating objects
+# Object types
+# Object properties
+# Manipulating objects
+# Saving and Loading
+

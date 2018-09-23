@@ -32,6 +32,47 @@
                   {"cmd":"app.gui.show_hide('', 'prop_frame')", "pos":[216, 4], "geom_name":"close_icon"}
                 ]
         },
+        {"name":"help_frame",
+         "size":[512, 320],
+         "pos":[-256,-256],
+         "parent":"center",
+         "header":64,
+         "scroll":0,
+         "autoresize":0,
+         "button":  [
+                    {"txt":"General info","cmd":"app.show_help('General info')", "width":384, "pos":[64,80]},
+                    {"txt":"Camera control","cmd":"app.show_help('Camera control')", "width":384, "pos":[64,112]},
+                    {"txt":"Creating objects","cmd":"app.show_help('Creating objects')", "width":384, "pos":[64,144]},
+                    {"txt":"Object types","cmd":"app.show_help('Object types')", "width":384, "pos":[64,176]},
+                    {"txt":"Object properties","cmd":"app.show_help('Object properties')", "width":384, "pos":[64,208]},
+                    {"txt":"Manipulating objects","cmd":"app.show_help('Manipulating objects')", "width":384, "pos":[64,240]},
+                    {"txt":"Saving and Loading","cmd":"app.show_help('Saving and Loading')", "width":384, "pos":[64,272]}
+                    ],
+         "text":[
+                {"txt":"User Manual", "pos":[0,8], "big_font":1}
+                ],
+         "widget":[
+                  {"cmd":"app.gui.show_hide('', 'help_frame')", "pos":[472, 4], "geom_name":"close_icon"}
+                ]
+        },
+        {"name":"help_txt_frame",
+         "size":[512, 512],
+         "pos":[-256,-256],
+         "parent":"center",
+         "header":64,
+         "scroll":1024,
+         "autoresize":0,
+         "button":  [
+                    {"txt":"Back to index","cmd":"app.gui.show_hide('help_frame', 'help_txt_frame')", "width":384, "pos":[64,80]}
+                    ],
+         "text":[
+                {"txt":"Title", "pos":[0,8], "big_font":1, "name":"help_txt_header"},
+                {"txt":"text...", "pos":[12,8], "align":"left", "big_font":0, "wordwrap":26, "name":"help_txt", "parent":"help_txt_frame_canvas"}
+                ],
+         "widget":[
+                  {"cmd":"app.gui.show_hide('', 'help_txt_frame')", "pos":[472, 4], "geom_name":"close_icon"}
+                ]
+        },
         {"name":"pivot_frame",
          "size":[256, 192],
          "pos":[-256,0],
@@ -153,7 +194,7 @@
          "pos":[-256,0],
          "parent":"prop_frame",
          "header":0,
-         "scroll":256,
+         "scroll":320,
          "autoresize":1,
          "text":[
                 {"txt":"Material", "pos":[0,0]}
@@ -258,7 +299,7 @@
         "button_save":{"txt":"Save/Load", "cmd":"app.gui.toggle('load_frame', ['list_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":160, "pos":[-6,0], "parent":"top_left"},
         "button_create":{"txt":"Create", "cmd":"app.gui.toggle(['button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'],['load_frame', 'list_frame'])", "width":96, "pos":[142,0], "parent":"top_left"},
         "button_list":{"txt":"Select", "cmd":"app.gui.toggle('list_frame', ['load_frame', 'button_create_ray','button_create_solid', 'button_create_lens','button_create_proj'])", "width":96, "pos":[226,0], "parent":"top_left"},
-        "button_help":{"txt":"Help", "cmd":"app.show_help()", "width":96, "pos":[310,0], "parent":"top_left"},
+        "button_help":{"txt":"Help", "cmd":"app.gui.toggle('help_frame')", "width":96, "pos":[310,0], "parent":"top_left"},
 
 
         "button_camera":{"pos":[-296,-32], "txt":"Camera", "cmd":"app.gui.toggle(['button_cam_reset','button_cam_ortho','button_cam_gimbal','button_cam_pan', 'button_cam_select'], ['prop_frame'])", "width":160, "parent":"bottom_right"},
