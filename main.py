@@ -2119,6 +2119,8 @@ class App(DirectObject):
         '''
         try:
             mesh=loader.load_model(model)
+            mesh.clear_model_nodes()
+            mesh.flatten_strong()
         except:
             self.print_txt('Error loading model '+model)
             return
