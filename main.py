@@ -3,10 +3,6 @@
 #python -m pip install panda3d
 #or download from panda3d.org
 
-##TODO:
-##-per pixel projector
-##-projector width/height
-##-emitter pivot
 #try:
 #    import opticalmaterialspy as mat_spy
 #except:
@@ -81,6 +77,8 @@ class App(DirectObject):
             pass
         with loading():
             #vars
+            self.last_txt=None
+            self.last_txt_ttl=0
             self.select_mask=BitMask32.bit(11)
             self.camera_mask=BitMask32.bit(22)
             self.obj_mask=BitMask32.bit(1)
@@ -317,14 +315,17 @@ class App(DirectObject):
         self.clear_scene()
         if os.path.exists(file_name):
             with open(file_name) as f:
-                data = json.load(f)
+                try:
+                    data = json.load(f)
+                except:
+                    self.print_txt('Could not load data!')
+                    return
                 for item in data:
                     if item['tags']['type']=='ray':
-                        self.make_ray(color=item['tags']['line_color'],
+                        self.make_ray(
+                                      color=item['tags']['line_color'],
                                       wavelength=item['tags']['wave'],
                                       model_name=item['tags']['name'],
-                                      pos=item['pos'],
-                                      hpr=item['hpr'],
                                       scale=item['scale'],
                                       columns=item['tags']['columns'],
                                       rows=item['tags']['rows'],
@@ -334,9 +335,8 @@ class App(DirectObject):
                                       angle_v=item['tags']['angle_v']
                                       )
                     elif item['tags']['type']=='projector':
-                        self.make_projector(color=item['tags']['line_color'],
-                                      pos=item['pos'],
-                                      hpr=item['hpr'],
+                        self.make_projector(
+                                      color=item['tags']['line_color'],
                                       scale=item['scale'],
                                       angle_h=item['tags']['angle_h'],
                                       angle_v=item['tags']['angle_v'],
@@ -347,19 +347,30 @@ class App(DirectObject):
                                       proj_h=item['tags']['proj_h']
                                       )
                     else:
-                        self.load_object(model=item['tags']['model_file'],
+                        self.load_object(
+                                         model=item['tags']['model_file'],
                                          select=False,
                                          object_type=item['tags']['type'],
                                          threshold=item['tags']['threshold'],
                                          flip_normal=item['tags']['flip_normal'])
-                        node=self.objects[-1]
-                        node.set_pos(*item['pos'])
-                        node.set_hpr(*item['hpr'])
-                        node.set_scale(*item['scale'])
-                        node.set_color(*item['color'], 1)
-                        node.set_shader_input('gloss', item['tags']['gloss'])
+                    node=self.objects[-1]
+                    if 'material_name' in item['tags']:
                         self.set_material(material=item['tags']['material_name'], node=node)
-
+                    if 'pivot_pos' in item['tags']:
+                        self.move_pivot(node, Point3(*item['tags']['pivot_pos']))
+                    if 'pos' in item:
+                        node.set_pos(*item['pos'])
+                    if 'hpr' in item:
+                        node.set_hpr(*item['hpr'])
+                    if 'scale' in item:
+                        node.set_scale(*item['scale'])
+                    if 'color' in item:
+                        node.set_color(*item['color'], 1)
+                    if 'gloss' in item['tags']:
+                        node.set_shader_input('gloss', item['tags']['gloss'])
+                    if 'stashed' in item['tags']:
+                        if item['tags']['stashed']:
+                            self.stash_object(node)
 
         self.gui.show_hide('', 'load_frame')
 
@@ -837,11 +848,20 @@ class App(DirectObject):
             node.set_python_tag('pivot_pos', pivot_pos)
             self.move_pivot(node, pivot_pos)
         elif txt=='pivot_h':
-            pass
+            pivot_hpr=node.get_python_tag('pivot_hpr')
+            pivot_hpr.x=value
+            node.set_python_tag('pivot_hpr', pivot_hpr)
+            self.rotate_pivot(node, pivot_hpr)
         elif txt=='pivot_p':
-            pass
+            pivot_hpr=node.get_python_tag('pivot_hpr')
+            pivot_hpr.y=value
+            node.set_python_tag('pivot_hpr', pivot_hpr)
+            self.rotate_pivot(node, pivot_hpr)
         elif txt=='pivot_r':
-            pass
+            pivot_hpr=node.get_python_tag('pivot_hpr')
+            pivot_hpr.z=value
+            node.set_python_tag('pivot_hpr', pivot_hpr)
+            self.rotate_pivot(node, pivot_hpr)
         elif txt=='snap':
             if self.mode=='move':
                 self.snap_pos=value
@@ -893,6 +913,10 @@ class App(DirectObject):
         self.gui['pivot_x_pos_input'].set('{0:.2f}'.format(*node.get_python_tag('pivot_pos')))
         self.gui['pivot_y_pos_input'].set('{1:.2f}'.format(*node.get_python_tag('pivot_pos')))
         self.gui['pivot_z_pos_input'].set('{2:.2f}'.format(*node.get_python_tag('pivot_pos')))
+        self.gui['pivot_h_input'].set('{0:.2f}'.format(*node.get_python_tag('pivot_hpr')))
+        self.gui['pivot_p_input'].set('{1:.2f}'.format(*node.get_python_tag('pivot_hpr')))
+        self.gui['pivot_r_input'].set('{2:.2f}'.format(*node.get_python_tag('pivot_hpr')))
+
 
         if node.has_python_tag('stashed'):
             self.gui.fade_in('stash_button')
@@ -915,7 +939,7 @@ class App(DirectObject):
                 self.gui['column_off_input'].set('{0:.2f}'.format(node.get_python_tag('column_offset')))
                 self.gui['angle_h_input'].set('{0:.2f}'.format(node.get_python_tag('angle_h')))
                 self.gui['angle_v_input'].set('{0:.2f}'.format(node.get_python_tag('angle_v')))
-            elif t=='projector':
+            elif t in ('projector', 'stashed projector'):
                 self.gui.show_hide('projector_prop_frame',['mesh_prop_frame', 'ray_prop_frame'])
                 self.gui['proj_angle_h_input'].set('{0:.2f}'.format(node.get_python_tag('angle_h')))
                 self.gui['proj_angle_v_input'].set('{0:.2f}'.format(node.get_python_tag('angle_v')))
@@ -959,19 +983,28 @@ class App(DirectObject):
                 self.print_txt('Object un-frozen')
             cnode.node().set_into_collide_mask(mask)
 
-    def stash_object(self):
+    def stash_object(self, node=None):
         '''Disable collisions and hide node '''
-        if self.selected_id is None:
-            return
-        node=self.objects[self.selected_id]
+        if node is None:
+            if self.selected_id is None:
+                return
+            node=self.objects[self.selected_id]
         if node:
             is_ray=False
-            if node.get_python_tag('type')=='ray':
+            if node.get_python_tag('type')=='projector':
+                node.set_python_tag('type', 'stashed projector')
+                node.get_python_tag('line').hide()
+                node.get_python_tag('quad').hide()
+                is_ray=True
+            elif node.get_python_tag('type')=='ray':
                 node.set_python_tag('type', 'stashed ray')
                 node.get_python_tag('line').hide()
                 is_ray=True
             elif node.get_python_tag('type')=='stashed ray':
                 node.set_python_tag('type', 'ray')
+                is_ray=True
+            elif node.get_python_tag('type')=='stashed projector':
+                node.set_python_tag('type', 'projector')
                 is_ray=True
             cnode=node.find('+CollisionNode')
             mask=cnode.node().get_into_collide_mask()
@@ -980,6 +1013,7 @@ class App(DirectObject):
                 self.print_txt('Object un-stashed')
                 mask=node.get_python_tag('old_mask')
                 self.gui.fade_out('stash_button')
+                node.show()
                 if not is_ray:
                     node.show_through(self.camera_mask)
             else:
@@ -988,6 +1022,7 @@ class App(DirectObject):
                 self.print_txt('Object stashed')
                 mask.clear()
                 self.gui.fade_in('stash_button')
+                node.hide()
                 if not is_ray:
                     node.hide(self.camera_mask)
             cnode.node().set_into_collide_mask(mask)
@@ -1124,6 +1159,15 @@ class App(DirectObject):
         self.update_ui_for_node(node)
         self.do_raytrace()
 
+    def rotate_pivot(self, node, hpr):
+        for child in node.get_children():
+            child.set_hpr(-hpr)
+        node.set_hpr(node.get_hpr(render)+hpr)
+        node.set_python_tag('pivot_hpr', hpr)
+        self.axis.set_pos(node.get_pos(render))
+        self.update_ui_for_node(node)
+        self.do_raytrace()
+
     def set_coords_local(self, state=None):
         '''If state is True objects will be moved/rotated/scaled
            in their own coordinates (model space),
@@ -1135,7 +1179,8 @@ class App(DirectObject):
             self.gui.fade_out('button_local')
             if self.selected_id is not None:
                 node=self.objects[self.selected_id]
-                self.axis.set_hpr(node.get_hpr())
+                pivot_hpr=node.get_python_tag('pivot_hpr')
+                self.axis.set_hpr(node.get_hpr()+pivot_hpr)
         else:
             self.global_coords=True
             self.gui.fade_in('button_local')
@@ -1256,7 +1301,6 @@ class App(DirectObject):
                         return task.again
                     else:
                         delta=axis_pos-self.last_axis_pos
-
                     if 'x' not in self.active_axis:
                         delta.x=0
                     if 'y' not in self.active_axis:
@@ -1410,6 +1454,8 @@ class App(DirectObject):
             text='\1shadow\1'+text+'\2'
             self.gui['on_screen_txt'].node().set_text(text)
             self.gui.show_hide('on_screen_txt')
+            self.last_txt=text
+            self.last_txt_ttl=3.0
         else:
             self.gui.show_hide('', 'on_screen_txt')
 
@@ -1541,6 +1587,7 @@ class App(DirectObject):
                 break
         rows=node.get_python_tag('sample_h')
         columns=node.get_python_tag('sample_v')
+        projector_size=node.get_python_tag('proj_w')*node.get_python_tag('proj_h')
         corner_rays=((0,0),
                      (0,columns-1),
                      (rows-1, 0),
@@ -1591,13 +1638,18 @@ class App(DirectObject):
             pass
         quad=self.make_deformed_quad(end_points)
         quad.wrt_reparent_to(node)
+        bounds=quad.get_bounds()
+        radius=bounds.get_radius()
+        if radius > projector_size*100.0:
+            quad.hide()
+            self.print_txt('Projection out of bounds')
         node.set_python_tag('quad', quad)
         tex=loader.load_texture(node.get_python_tag('texture'))
         tex.set_anisotropic_degree(2)
         quad.set_texture(tex, 1)
-        #quad.set_depth_offset(1)
-        quad.set_depth_test(False)
-        quad.set_bin('fixed', 100)
+        quad.set_depth_offset(1)
+        #quad.set_depth_test(False)
+        #quad.set_bin('fixed', 100)
         quad.set_two_sided(True)
         quad.set_transparency(TransparencyAttrib.M_none)
         #quad.set_render_mode_wireframe()
@@ -1664,6 +1716,12 @@ class App(DirectObject):
         '''Update task, called every frame'''
         dt = globalClock.getDt()
         render.set_shader_input("camera_pos", base.cam.get_pos(render))
+        txt=self.gui['on_screen_txt'].node().get_text()
+        if txt == self.last_txt:
+            self.last_txt_ttl-=dt
+        if self.last_txt_ttl<0:
+            self.gui.show_hide(None, 'on_screen_txt')
+
         if self.out_que:
             node_id, points = self.out_que.popleft()
             node=self.objects[node_id]
@@ -1953,6 +2011,7 @@ class App(DirectObject):
             node=self.objects[self.selected_id]
             if node:
                 node.set_shader_input('gloss', float(value))
+                node.set_python_tag('gloss', float(value))
 
     def set_alpha(self, value):
         '''Set transparency [0.0-1.0] for the current object '''
@@ -1978,11 +2037,11 @@ class App(DirectObject):
 
     def make_projector(self, color=None, wavelength=None, model_name=None,
                 pos=None, hpr=None, scale=None, angle_h=22.5, angle_v=22.5,
-                texture='images/test1.png',sample_v=8, sample_h=8,
+                texture='images/test1.png',sample_v=2, sample_h=2,
                 proj_w=1.0, proj_h=1.0):
         '''Creates a new projector object'''
         root=self.scene.attach_new_node('project')
-        model=loader.load_model('data/box.egg')
+        model=loader.load_model('data/box')
         model.reparent_to(root)
         self.objects.append(root)
         id=len(self.objects)-1
@@ -2000,7 +2059,7 @@ class App(DirectObject):
         root.set_python_tag('proj_h', proj_h)
         root.set_python_tag('pivot_pos', Point3(0,0,0))
         root.set_python_tag('pivot_hpr', Point3(0,0,0))
-        root.set_python_tag('texture', 'images/test1.png')
+        root.set_python_tag('texture', texture)
         if color is None:
             color=self.colors.new_color()
         else:
@@ -2050,7 +2109,7 @@ class App(DirectObject):
                 angle_h=0, angle_v=0):
         '''Creates a new ray object'''
         root=self.scene.attach_new_node('ray')
-        model=loader.load_model('data/box.egg')
+        model=loader.load_model('data/box')
         model.reparent_to(root)
         self.objects.append(root)
         id=len(self.objects)-1
@@ -2127,18 +2186,18 @@ class App(DirectObject):
         model_name=Filename(model).getBasenameWoExtension()
         triangles=self._get_triangles(mesh, [])
         #make a new mesh and smooth it
-        if Filename(model).get_extension() not in ('bam', 'egg'):
-            if threshold is None:
-                threshold=self.gui['smooth_input'].get()
-                try:
-                    threshold=math_eval(threshold)
-                except:
-                    threshold=None
-            if flip_normal is None:
-                flip_normal=self.flip_model_normal
-            mesh=self._make_smooth_mesh(triangles, threshold, flip_normal)
-            if self.write_model_bam:
-                mesh.write_bam_file(model+'.bam')
+        #if Filename(model).get_extension() not in ('bam', 'egg'):
+        if threshold is None:
+            threshold=self.gui['smooth_input'].get()
+            try:
+                threshold=math_eval(threshold)
+            except:
+                threshold=None
+        if flip_normal is None:
+            flip_normal=self.flip_model_normal
+        mesh=self._make_smooth_mesh(triangles, threshold, flip_normal)
+        if self.write_model_bam:
+            mesh.write_bam_file(model+'.bam')
         root=self.scene.attach_new_node(model_name)
         mesh.reparent_to(root)
         self.objects.append(root)

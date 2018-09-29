@@ -12,7 +12,7 @@ void main()
     {
     vec4 color=p3d_Color;
     vec3 normal=normalize(N);
-    //vec3 flat_normal = normalize( cross(dFdx(V), dFdy(V)) );
+    //vec3 normal = normalize( cross(dFdx(V), dFdy(V)) );
 
     vec4 lit=texture(litex, vec2(normal.xyz * vec3(0.495) + vec3(0.5)));
 

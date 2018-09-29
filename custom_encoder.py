@@ -1,11 +1,13 @@
 import json
-from panda3d.core import NodePath
+from panda3d.core import NodePath, BitMask32
 
 class CustomEncoder(json.JSONEncoder):
     '''A JSONEncoder that encodes all iterable objects into lists'''
     def default(self, o):
         if isinstance(o, NodePath):
             return None
+        if isinstance(o, BitMask32):
+            return o.get_word()
         try:
             iterable = iter(o)
         except TypeError:

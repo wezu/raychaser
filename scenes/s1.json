@@ -1,0 +1,183 @@
+[
+    {
+        "tags": {
+            "id": 0,
+            "type": "ray",
+            "wave": 650,
+            "rows": 1,
+            "columns": 8,
+            "column_offset": 0.3,
+            "row_offset": 0.1,
+            "angle_h": 0,
+            "angle_v": 0,
+            "pivot_pos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "pivot_hpr": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "line_color": [
+                0.9831920862197876,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "name": "Ray 0"
+        },
+        "pos": [
+            0.0,
+            -2.0,
+            0.125
+        ],
+        "hpr": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.05000000074505806,
+            1.0,
+            2.0999999046325684
+        ],
+        "color": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+        ]
+    },
+    {
+        "tags": {
+            "id": 1,
+            "flip_normal": null,
+            "threshold": null,
+            "type": "reflect",
+            "material_name": "SiO2",
+            "name": "prism",
+            "model_file": "models/reflect/prism.egg",
+            "gloss": 0.0,
+            "pivot_pos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "pivot_hpr": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        "pos": [
+            0.0,
+            0.0,
+            1.7826554775238037
+        ],
+        "hpr": [
+            -90.0,
+            0.0,
+            -3.0185435662133386e-06
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    {
+        "tags": {
+            "id": 2,
+            "flip_normal": null,
+            "threshold": null,
+            "type": "reflect",
+            "material_name": "SiO2",
+            "name": "prism",
+            "model_file": "models/reflect/prism.egg",
+            "gloss": 0.0,
+            "pivot_pos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "pivot_hpr": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "columns": 8
+        },
+        "pos": [
+            0.0,
+            0.0,
+            4.5
+        ],
+        "hpr": [
+            -90.0,
+            0.0,
+            165.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    {
+        "tags": {
+            "id": 3,
+            "flip_normal": null,
+            "threshold": null,
+            "type": "refract",
+            "material_name": "SiO2",
+            "name": "lens_plano-concave",
+            "model_file": "models/refract/lens_plano-concave.egg",
+            "gloss": 0.0,
+            "pivot_pos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "pivot_hpr": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        "pos": [
+            0.0,
+            5.502269268035889,
+            -0.7094101905822754
+        ],
+        "hpr": [
+            180.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            0.7900000214576721
+        ]
+    }
+]
