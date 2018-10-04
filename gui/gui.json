@@ -10,7 +10,8 @@
                     {"txt":"Delete","cmd":"app.delete_object()", "width":96, "pos":[0,194]},
                     {"txt":"Frozen","cmd":"app.freeze_object()", "width":96, "pos":[80,194], "name":"freeze_button"},
                     {"txt":"Stashed","cmd":"app.stash_object()", "width":96, "pos":[160,194], "name":"stash_button"},
-                    {"txt":"Edit pivot","cmd":"app.gui.toggle('pivot_frame')", "width":128, "pos":[64,226]}
+                    {"txt":"Clone","cmd":"app.clone()", "width":128, "pos":[4,225]},
+                    {"txt":"Edit pivot","cmd":"app.gui.toggle('pivot_frame')", "width":128, "pos":[124,225]}                    
                     ],
 
          "text":[
@@ -42,7 +43,7 @@
          "button":  [
                     {"txt":"General info","cmd":"app.show_help('General info')", "width":384, "pos":[64,80]},
                     {"txt":"Camera control","cmd":"app.show_help('Camera control')", "width":384, "pos":[64,112]},
-                    {"txt":"Creating objects","cmd":"app.show_help('Creating objects')", "width":384, "pos":[64,144]},
+                    {"txt":"Creating and Selecting objects","cmd":"app.show_help('Creating and Selecting objects')", "width":384, "pos":[64,144]},
                     {"txt":"Object types","cmd":"app.show_help('Object types')", "width":384, "pos":[64,176]},
                     {"txt":"Object properties","cmd":"app.show_help('Object properties')", "width":384, "pos":[64,208]},
                     {"txt":"Manipulating objects","cmd":"app.show_help('Manipulating objects')", "width":384, "pos":[64,240]},
@@ -60,7 +61,7 @@
          "pos":[-256,-256],
          "parent":"center",
          "header":64,
-         "scroll":1024,
+         "scroll":1536,
          "autoresize":0,
          "button":  [
                     {"txt":"Back to index","cmd":"app.gui.show_hide('help_frame', 'help_txt_frame')", "width":384, "pos":[64,80]}
@@ -170,7 +171,9 @@
                 ],
          "button":  [
                     {"name":"button_proj_img","txt":"Set Image...","cmd":"app.gui.show_hide('file_list_frame')", "width":224, "pos":[16,230]},
-                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,314]}
+                    {"txt":"Random Color","cmd":"app.ray_random_color()", "width":224, "pos":[16,312]},
+                    {"txt":"Depth test","cmd":"app.set_depth_test()", "width":224, "pos":[16,342], "name":"button_depth_test"}
+                    
                     ]
         },
         {"name":"file_list_frame",

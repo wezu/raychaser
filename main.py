@@ -3,6 +3,8 @@
 #python -m pip install panda3d
 #or download from panda3d.org
 
+#by default a simpler version of opticalmaterialspy is used (see mat_spy.py)
+#but the original can be used if needed, but that version requires both numpy and scipy
 #try:
 #    import opticalmaterialspy as mat_spy
 #except:
@@ -36,8 +38,8 @@ import shutil
 import random
 from math import radians
 from math import sqrt
-from collections import namedtuple
 from collections import deque
+from collections import namedtuple
 import threading
 #py 2 and 3 compatibility
 if sys.version_info >= (3, 0):
@@ -86,8 +88,8 @@ class App(DirectObject):
             self.ray_mask=BitMask32.bit(2)
             self.pre_click_mouse_pos=Vec2(0,0)
             self.last_mouse_pos=Vec2(0,0)
-            self.mouse_lock=False
-            self.mouse_lock_frame_skip=True
+            self.mouse_is_down=False
+            self.mouse_is_down_frame_skip=True
             self.selected_id=None
             self.flip_model_normal=False
             self.write_model_bam=False
@@ -118,7 +120,7 @@ class App(DirectObject):
             self.gui.fade_out(['button_rotate', 'button_move', 'button_scale'])
             self.set_snap(False)
             self.gui.resize_callback.append(self.on_resize)
-            self.load_help_from_txt('help.txt')
+            self.load_help_from_txt('readme.md')
 
             #use a better camera controller
             cam_speed=ConfigVariableDouble('camera-speed', 1.0).get_value()
@@ -203,8 +205,8 @@ class App(DirectObject):
             self.find_scenes('scenes')
             self.find_images('images')
             #mouse keys
-            self.accept('mouse1', self._on_click)
-            self.accept('mouse1-up', self._unlock_mouse)
+            self.accept('mouse1', self._on_mouse_down)
+            self.accept('mouse1-up', self._on_mouse_up)
             #keys
             self.accept('escape', self.set_select_mode)
             #window close event - we need to clean up before exit
@@ -220,7 +222,7 @@ class App(DirectObject):
             self.deamon.setDaemon(True)
             self.deamon.start()
             # Task
-            #taskMgr.add(self._lock_mouse_task, 'mouse_lock_tsk')
+            #taskMgr.add(self._on_mouse_down_task, 'mouse_lock_tsk')
             taskMgr.add(self._mouse_manipulate_task, 'mouse_tsk')
             taskMgr.add(self._update, 'update_tsk')
 
@@ -228,8 +230,7 @@ class App(DirectObject):
         self.splash.set_bin("fixed", 11)
         base.buttonThrowers[0].node().setButtonDownEvent('buttonDown')
         self.accept('buttonDown', self.remove_splash)
-        self.print_txt('[Press any key to continue]')
-        #self.gui.fade_screen(0.5, base.get_background_color())
+        self.print_txt('[Press any key to continue]', ttl=30.0)
 
     def remove_splash(self, key_event=None):
         '''Removes the splash screen'''
@@ -311,7 +312,6 @@ class App(DirectObject):
 
     def load_scene(self, file_name):
         '''Load a scene from a  'file_name' json file'''
-        ## TODO: missing properties - gloss, transparency, pivot pos...
         self.clear_scene()
         if os.path.exists(file_name):
             with open(file_name) as f:
@@ -371,6 +371,8 @@ class App(DirectObject):
                     if 'stashed' in item['tags']:
                         if item['tags']['stashed']:
                             self.stash_object(node)
+                    if 'name' in item['tags']:
+                        node.set_python_tag('name', item['tags']['name'])    
 
         self.gui.show_hide('', 'load_frame')
 
@@ -544,7 +546,64 @@ class App(DirectObject):
             base.cam.node().set_lens(base.camLens)
             self.select_cam.node().set_lens(base.camLens)
             self.gui.fade_out('button_cam_ortho')
-
+            
+    def clone(self, node=None):
+        '''Create a clone from a node, if node is None, clone selected object'''
+        if node is None:
+            if self.selected_id is not None:            
+                node=self.objects[self.selected_id]
+        if node:
+            tags={}
+            for key in node.get_python_tag_keys():
+                if key not in ('material', 'line'):
+                    tags[key]=node.get_python_tag(key)            
+            if tags['type']=='ray':
+                self.make_ray(
+                              color=tags['line_color'],
+                              wavelength=tags['wave'],
+                              model_name=tags['name'],
+                              columns=tags['columns'],
+                              rows=tags['rows'],
+                              column_offset=tags['column_offset'],
+                              row_offset=tags['row_offset'],
+                              angle_h=tags['angle_h'],
+                              angle_v=tags['angle_v']
+                              )
+            elif tags['type']=='projector':
+                self.make_projector(
+                              color=tags['line_color'],                              
+                              angle_h=tags['angle_h'],
+                              angle_v=tags['angle_v'],
+                              texture=tags['texture'],
+                              sample_v=tags['sample_v'],
+                              sample_h=tags['sample_h'],
+                              proj_w=tags['proj_w'],
+                              proj_h=tags['proj_h']
+                              )
+            else:
+                self.load_object(
+                                 model=tags['model_file'],
+                                 select=False,
+                                 object_type=tags['type'],
+                                 threshold=tags['threshold'],
+                                 flip_normal=tags['flip_normal'])
+            clone=self.objects[-1]
+            if 'material_name' in tags:
+                self.set_material(material=tags['material_name'], node=clone)
+            if 'pivot_pos' in tags:
+                self.move_pivot(clone, Point3(*tags['pivot_pos']))
+            clone.set_pos(render, node.get_pos(render))
+            clone.set_hpr(render, node.get_hpr(render))
+            clone.set_scale(render, node.get_scale(render))
+            clone.set_color(node.get_color(), 1)
+            if 'gloss' in tags:
+                clone.set_shader_input('gloss', tags['gloss'])
+            if 'stashed' in tags:
+                if tags['stashed']:
+                    self.stash_object(clone)
+            if 'name' in tags:
+                clone.set_python_tag('name', tags['name']+'_clone')    
+    
     def set_reflect(self):
         '''Toggle object properties'''
         if self.selected_id is None:
@@ -599,7 +658,29 @@ class App(DirectObject):
 
             self.do_raytrace()
 
-
+    def set_depth_test(self, node=None, depth_test=None):
+        '''Changes the way the projected image geom is displayed'''
+        if node is None:
+            if self.selected_id is None:
+                return
+            node=self.objects[self.selected_id]
+        if node is None:
+            return
+        if node.has_python_tag('quad'):
+            quad=node.get_python_tag('quad')
+            if depth_test is None:
+                depth_test=not quad.get_depth_test()
+            if depth_test:            
+                quad.clear_bin()
+                quad.set_depth_offset(1)                
+                quad.set_depth_test(True)                
+                self.gui.fade_in('button_depth_test')
+            else:
+                quad.set_depth_test(False)
+                quad.set_bin('fixed', 100)
+                self.gui.fade_out('button_depth_test')
+        
+    
     def set_material(self, material='SiO2', node=None):
         ''' Sets the material of the currently selected object'''
         if node is None:
@@ -807,6 +888,7 @@ class App(DirectObject):
             #line=node.get_python_tag('line')
             #line.set_color(color, 1)
         elif txt == 'name':
+            value =self.gui['name_input'].get() # get the full text!
             node.set_python_tag('name', value)
             id=node.get_python_tag('id')
             object_type=node.get_python_tag('type')
@@ -917,7 +999,6 @@ class App(DirectObject):
         self.gui['pivot_p_input'].set('{1:.2f}'.format(*node.get_python_tag('pivot_hpr')))
         self.gui['pivot_r_input'].set('{2:.2f}'.format(*node.get_python_tag('pivot_hpr')))
 
-
         if node.has_python_tag('stashed'):
             self.gui.fade_in('stash_button')
         else:
@@ -947,6 +1028,12 @@ class App(DirectObject):
                 self.gui['proj_sample_v_input'].set('{0}'.format(node.get_python_tag('sample_v')))
                 self.gui['proj_width_input'].set('{0:.2f}'.format(node.get_python_tag('proj_w')))
                 self.gui['proj_height_input'].set('{0:.2f}'.format(node.get_python_tag('proj_h')))
+                if node.has_python_tag('quad'):
+                    quad=node.get_python_tag('quad')
+                    if quad.get_depth_test():
+                        self.gui.fade_in('button_depth_test')
+                    else:
+                        self.gui.fade_out('button_depth_test')
             else:
                 self.gui.show_hide('mesh_prop_frame', ['ray_prop_frame','projector_prop_frame'])
                 mat_name=node.get_python_tag('material_name')
@@ -1140,6 +1227,7 @@ class App(DirectObject):
                     self.axis.set_hpr(node.get_hpr(render))
 
     def center_pivot(self):
+        '''Moves the pivot of the selected node to the centerof its bounding volume.'''
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
             if node is not None:
@@ -1151,6 +1239,7 @@ class App(DirectObject):
                         break
 
     def move_pivot(self, node, pos):
+        '''Move the pivot of the node to the given pos'''
         for child in node.get_children():
             child.set_pos(-pos)
         node.set_pos(node.get_pos(render)+pos)
@@ -1160,6 +1249,7 @@ class App(DirectObject):
         self.do_raytrace()
 
     def rotate_pivot(self, node, hpr):
+        '''Rotate the pivot of node to the given hpr '''
         for child in node.get_children():
             child.set_hpr(-hpr)
         node.set_hpr(node.get_hpr(render)+hpr)
@@ -1210,6 +1300,7 @@ class App(DirectObject):
             self.update_axis()
 
     def update_axis(self):
+        '''Updates the pos/hpr of the axis model, and the plane node used for manipulations'''
         point=self.axis.get_pos(render)
         if 'x' in self.active_axis and 'y' in self.active_axis and 'z' in self.active_axis:
             temp=NodePath('temp')
@@ -1245,10 +1336,10 @@ class App(DirectObject):
             return
         self.plane=Plane(vec, point)
 
-    def _unlock_mouse(self):
+    def _on_mouse_up(self):
         '''Called when the user lets go of the left mouse button '''
-        if self.mouse_lock:
-            self.mouse_lock=False
+        if self.mouse_is_down:
+            self.mouse_is_down=False
             self.last_axis_pos=None
             self.last_hpr=None
             self.circle.hide()
@@ -1265,17 +1356,10 @@ class App(DirectObject):
                 self.axis.set_pos(node.get_pos(render))
                 if not self.global_coords:
                     self.axis.set_hpr(node.get_hpr(render))
-
-    def _lock_mouse(self):
-        self.update_axis()
-        self.last_axis_pos = None
-        self.last_hpr=None
-        self.last_vec=None
-        self.last_scale=None
-        self.mouse_lock=True
-
+       
     def _mouse_manipulate_task(self, task):
-        if self.mouse_lock:
+        '''This task handles movement/rotation/scaling of objects with the mouse''' 
+        if self.mouse_is_down:
             if self.selected_id is None:
                 return task.again
             else:
@@ -1358,7 +1442,7 @@ class App(DirectObject):
                     node.set_scale(node.get_scale(render)-Vec3(delta_distance))
         return task.again
 
-    def _on_click(self):
+    def _on_mouse_down(self):
         '''Called when the mouse button is pressed '''
         if base.mouseWatcherNode.has_mouse():
             m_pos = base.mouseWatcherNode.get_mouse()
@@ -1384,7 +1468,12 @@ class App(DirectObject):
                         self.axis.set_hpr(hit.get_parent().get_hpr(render))
                     if self.mode != 'select':
                         self.update_ui_for_node(hit.get_parent())
-                        self._lock_mouse()
+                        self.update_axis()
+                        self.last_axis_pos = None
+                        self.last_hpr=None
+                        self.last_vec=None
+                        self.last_scale=None
+                        self.mouse_is_down=True
                         for axis in self.active_axis:
                             self.axis.find(axis).show()
                     else:
@@ -1394,8 +1483,8 @@ class App(DirectObject):
             self.set_select_mode()
 
     def _setup_select_buff(self):
-        '''Create  an off-screen buffer  to render the selected object,
-        only the depth is renderd and a edge detect shader is used to render an outline.
+        '''Create  an off-screen buffer to render the selected object,
+        only the depth is rendered and a edge detect shader is used to render an outline.
         '''
         render.hide(self.select_mask)
         #render depth
@@ -1447,7 +1536,7 @@ class App(DirectObject):
             base.graphicsEngine.render_frame()
             base.graphicsEngine.render_frame()
 
-    def print_txt(self, *args):
+    def print_txt(self, *args, ttl=3.0):
         '''Prints to the screen'''
         text=''.join((str(i) for i in args))
         if text:
@@ -1455,7 +1544,7 @@ class App(DirectObject):
             self.gui['on_screen_txt'].node().set_text(text)
             self.gui.show_hide('on_screen_txt')
             self.last_txt=text
-            self.last_txt_ttl=3.0
+            self.last_txt_ttl=ttl
         else:
             self.gui.show_hide('', 'on_screen_txt')
 
@@ -1511,7 +1600,7 @@ class App(DirectObject):
                     self.trace_ray_in_thread(node_id)
 
     def ray_random_color(self):
-        '''GUI callback - changes the current ray color to a different, random color '''
+        '''Changes the current ray color to a different, random color '''
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
             if node:
@@ -1522,9 +1611,8 @@ class App(DirectObject):
                 line.set_color(color, 1)
                 self.gui['ray_color_input'].set('{0:.2f}, {1:.2f}, {2:.2f}'.format(*color))
 
-
     def wavelength_to_color(self):
-        '''GUI callback - changes the current ray color to based on its wavelength '''
+        '''Changes the current ray color to based on its wavelength '''
         if self.selected_id is not None:
             node=self.objects[self.selected_id]
             if node:
@@ -1562,8 +1650,8 @@ class App(DirectObject):
         snode.add_geom(geom)
         return render.attach_new_node(snode)
 
-
     def draw_projection(self, node_id, points):
+        '''Draw 4 rays and a geom for the projector with node_id'''
         node=self.objects[node_id]
         if node is None:
             return
@@ -1647,7 +1735,7 @@ class App(DirectObject):
         tex=loader.load_texture(node.get_python_tag('texture'))
         tex.set_anisotropic_degree(2)
         quad.set_texture(tex, 1)
-        quad.set_depth_offset(1)
+        quad.set_depth_offset(1)        
         #quad.set_depth_test(False)
         #quad.set_bin('fixed', 100)
         quad.set_two_sided(True)
@@ -1811,6 +1899,15 @@ class App(DirectObject):
         self.in_que.append(node_id)
 
     def trace_ray(self, ray_id, start_pos, wavelength, origin, target, last_ior, points=[], split=[]):
+        '''Trace a ray from start_pos to target
+        ray_id - a (row, column) tuple that is used to identity the ray
+        start_pos - the point this ray starts from
+        wavelength - wavelength in nm
+        origin -the point from where all the rays in the chain started from
+        target - the vector describing where the ray is targeted
+        last_ior - the ior of rhe last objext hit (if any) or 1.0 for air
+        points - list of points hit so far
+        split - list of points where the ray splits'''
         if points:
             if points[-1][0] is None:
                 points.append((start_pos, ray_id))
@@ -1878,9 +1975,11 @@ class App(DirectObject):
                 #print('insert end')
 
     def reflect(self, I, N):
+        '''Returns the reflection direction'''
         return I - N * 2.0 * I.dot(N)
 
-    def refract(self, I, N, ior_0, ior_1):
+    def refract(self, I, N, ior_0, ior_1):    
+        '''Returns if the refraction is internal and the refraction direction'''
         cosi = max(-1.0, min(1.0, I.dot(N) ))
         etai = ior_0
         etat = ior_1
@@ -2243,6 +2342,6 @@ class App(DirectObject):
             self.do_raytrace()
         return root
 
-
+#run the app
 application=App()
 application.base.run()

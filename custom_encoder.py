@@ -2,7 +2,8 @@ import json
 from panda3d.core import NodePath, BitMask32
 
 class CustomEncoder(json.JSONEncoder):
-    '''A JSONEncoder that encodes all iterable objects into lists'''
+    '''A JSONEncoder that encodes all iterable objects into lists,
+    NodePath into None, and BitMask32 into int'''
     def default(self, o):
         if isinstance(o, NodePath):
             return None
